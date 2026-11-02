@@ -1,0 +1,115 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("EVENT_ADMIN") // SUPER_ADMIN, EVENT_ADMIN, STAFF
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model SystemSetting {
+  id        String   @id @default("default")
+  smtpHost  String?
+  smtpPort  Int?     @default(587)
+  smtpUser  String?
+  smtpPass  String?
+  smtpFrom  String?  @default("EventPass RSVP <rsvp@eventorganizer.id>")
+  adminPin  String?  @default("123456")
+  updatedAt DateTime @updatedAt
+}
+
+model Event {
+  id                 String         @id @default(uuid())
+  slug               String         @unique
+  title              String
+  description        String?
+  location           String?
+  startsAt           DateTime
+  endsAt             DateTime?
+  registrationDeadline DateTime?
+  quota              Int            @default(100)
+  status             String         @default("OPEN") // DRAFT, OPEN, CLOSED, COMPLETED
+  posterUrl          String?
+  formSchema         String         @default("[]") // JSON string of custom fields
+  rsvpMode           String         @default("MANUAL") // MANUAL, AUTO
+  autoSendConfirmed  Boolean        @default(false)
+  emailSubject       String?
+  emailBody          String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  registrations      Registration[]
+  prizes             Prize[]
+  prizeDraws         PrizeDraw[]
+}
+
+model Registration {
+  id           String      @id @default(uuid())
+  eventId      String
+  name         String
+  email        String
+  phone        String?
+  answers      String      @default("{}") // JSON string of custom form answers
+  status       String      @default("PENDING") // PENDING, APPROVED, REJECTED, CHECKED_IN
+  qrToken      String      @unique @default(uuid())
+  approvedBy   String?
+  approvedAt   DateTime?
+  checkedInAt  DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  event        Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  emailLogs    EmailLog[]
+  prizeDraws   PrizeDraw[]
+
+  @@unique([eventId, email])
+}
+
+model EmailLog {
+  id             String       @id @default(uuid())
+  registrationId String
+  recipient      String
+  subject        String
+  status         String       @default("QUEUED") // QUEUED, SENT, FAILED
+  error          String?
+  sentAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
+
+model Prize {
+  id          String      @id @default(uuid())
+  eventId     String
+  name        String
+  quantity    Int         @default(1)
+  order       Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  prizeDraws  PrizeDraw[]
+}
+
+model PrizeDraw {
+  id             String       @id @default(uuid())
+  eventId        String
+  prizeId        String
+  registrationId String
+  drawnAt        DateTime     @default(now())
+  status         String       @default("VALID") // VALID, REDRAWN
+
+  event          Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  prize          Prize        @relation(fields: [prizeId], references: [id], onDelete: Cascade)
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+}
