@@ -624,23 +624,25 @@ export function RegistrationsClient({
                     className="accent-[#17449A] w-3.5 h-3.5 rounded cursor-pointer"
                   />
                 </th>
-                <th className="p-3 font-bold text-slate-800 sticky left-10 z-20 bg-slate-100/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] min-w-[190px]">
+                <th className="p-3 font-bold text-slate-800 sticky left-10 z-20 bg-slate-100/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] min-w-[170px]">
                   Peserta
                 </th>
-                <th className="p-3 font-bold text-slate-800 whitespace-nowrap min-w-[110px]">Status</th>
+                <th className="p-3 font-bold text-slate-800 whitespace-nowrap min-w-[100px]">
+                  Status
+                </th>
                 {formSchema.slice(0, 3).map((f) => (
                   <th
                     key={f.id}
-                    className="p-3 font-bold text-slate-800 whitespace-nowrap max-w-[160px] truncate"
+                    className="p-3 font-bold text-slate-800 whitespace-nowrap max-w-[140px] truncate"
                   >
                     {f.label}
                   </th>
                 ))}
-                <th className="p-3 font-bold text-slate-800 whitespace-nowrap min-w-[110px]">
+                <th className="p-3 font-bold text-slate-800 whitespace-nowrap min-w-[95px]">
                   Status Email
                 </th>
-                <th className="p-3 font-bold text-slate-800 text-right pr-4 whitespace-nowrap min-w-[210px]">
-                  Aksi & Kirim Tiket
+                <th className="p-3 font-bold text-slate-800 text-right pr-3.5 whitespace-nowrap sticky right-0 z-20 bg-slate-100/95 backdrop-blur-md border-l border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.07)] min-w-[160px]">
+                  Aksi
                 </th>
               </tr>
             </thead>
@@ -686,9 +688,9 @@ export function RegistrationsClient({
                         />
                       </td>
 
-                      <td className="p-3 sticky left-10 z-10 bg-white/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] transition-colors min-w-[190px]">
-                        <div className="font-bold text-slate-900 truncate max-w-[190px]">{r.name}</div>
-                        <div className="text-[11px] text-slate-600 truncate max-w-[190px]">
+                      <td className="p-3 sticky left-10 z-10 bg-white/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] transition-colors min-w-[170px]">
+                        <div className="font-bold text-slate-900 truncate max-w-[170px]">{r.name}</div>
+                        <div className="text-[11px] text-slate-600 truncate max-w-[170px]">
                           {r.email}
                         </div>
                         {r.phone && (
@@ -698,7 +700,7 @@ export function RegistrationsClient({
                         )}
                       </td>
 
-                      <td className="p-3 whitespace-nowrap min-w-[110px]">
+                      <td className="p-3 whitespace-nowrap min-w-[100px]">
                         <StatusBadge status={r.status} />
                       </td>
 
@@ -710,14 +712,14 @@ export function RegistrationsClient({
                         return (
                           <td
                             key={f.id}
-                            className="p-3 text-slate-700 font-medium max-w-[160px] truncate"
+                            className="p-3 text-slate-700 font-medium max-w-[140px] truncate"
                           >
                             {displayVal}
                           </td>
                         );
                       })}
 
-                      <td className="p-3 whitespace-nowrap min-w-[110px]">
+                      <td className="p-3 whitespace-nowrap min-w-[95px]">
                         {emailLog ? (
                           <span
                             className={`inline-flex items-center gap-1 text-[11px] font-bold font-mono ${
@@ -740,8 +742,8 @@ export function RegistrationsClient({
                         )}
                       </td>
 
-                      <td className="p-3 text-right pr-4 whitespace-nowrap min-w-[210px]">
-                        <div className="inline-flex items-center gap-1.5 justify-end">
+                      <td className="p-3 text-right pr-3.5 whitespace-nowrap sticky right-0 z-10 bg-white/95 backdrop-blur-md border-l border-slate-200/80 shadow-[-3px_0_6px_-2px_rgba(0,0,0,0.07)] min-w-[160px]">
+                        <div className="inline-flex items-center gap-1 justify-end">
                           {/* Approve / Reject buttons for PENDING */}
                           {isPending && (
                             <>
@@ -757,7 +759,7 @@ export function RegistrationsClient({
                                 ) : (
                                   <Check className="w-3.5 h-3.5" />
                                 )}
-                                <span>ACC & Kirim</span>
+                                <span>ACC</span>
                               </button>
                               <button
                                 type="button"
@@ -789,10 +791,10 @@ export function RegistrationsClient({
                             type="button"
                             onClick={() => openSendTicketModal(r)}
                             title="Buka Template Email & Kirim E-Tiket"
-                            className="px-2.5 py-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] inline-flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                            className="p-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] inline-flex items-center gap-1 text-[11px] font-bold cursor-pointer"
                           >
-                            <Send className="w-3 h-3 text-[#17449A]" />
-                            <span>Kirim Tiket</span>
+                            <Send className="w-3.5 h-3.5 text-[#17449A]" />
+                            <span className="hidden xl:inline">Tiket</span>
                           </button>
 
                           {/* View Digital Ticket */}
@@ -800,7 +802,7 @@ export function RegistrationsClient({
                             href={`/ticket/${r.qrToken}`}
                             target="_blank"
                             title="Buka E-Tiket Digital"
-                            className="p-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A]"
+                            className="p-1.5 rounded-xl liquid-pill text-slate-700 hover:text-[#17449A]"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </Link>
@@ -811,7 +813,7 @@ export function RegistrationsClient({
                             onClick={() => handleDelete(r.id)}
                             disabled={loadingAction === `delete_${r.id}`}
                             title="Hapus Peserta"
-                            className="p-1.5 rounded-xl liquid-pill text-slate-500 hover:text-rose-600 cursor-pointer"
+                            className="p-1.5 rounded-xl liquid-pill text-slate-400 hover:text-rose-600 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
