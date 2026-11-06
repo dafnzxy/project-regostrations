@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { checkAdminAuth } from "@/actions/auth";
 
 const ALLOWED_TYPES: Record<string, string> = {
@@ -11,7 +9,7 @@ const ALLOWED_TYPES: Record<string, string> = {
   "image/gif": "gif",
 };
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 4.5 * 1024 * 1024; // 4.5MB (Vercel Serverless Function Max Body Limit)
 
 function hasValidImageMagicBytes(buf: Buffer): boolean {
   if (buf.length < 12) return false;
@@ -73,7 +71,7 @@ export async function POST(req: NextRequest) {
         {
           success: false,
           message:
-            "Format file tidak didukung. Harap unggah gambar JPG, PNG, WebP, GIF, atau SVG.",
+            "Format file tidak didukung. Harap unggah gambar JPG, PNG, WebP, atau GIF.",
         },
         { status: 400 }
       );
@@ -83,20 +81,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          message: "Ukuran file terlalu besar. Maksimal ukuran gambar adalah 10MB.",
+          message: "Ukuran file terlalu besar. Maksimal ukuran gambar adalah 4MB.",
         },
         { status: 400 }
       );
     }
 
-    const ext = ALLOWED_TYPES[file.type] || "jpg";
-    const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-    const filename = `banner-${uniqueSuffix}.${ext}`;
-
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await fs.promises.mkdir(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, filename);
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
@@ -110,14 +100,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    await fs.promises.writeFile(filePath, buffer);
-
-    const fileUrl = `/api/uploads/${filename}`;
+    // Serverless-Friendly: Store as Data URL Base64 (eliminates disk permissions/read-only filesystem on Vercel)
+    const base64 = buffer.toString("base64");
+    const mimeType = file.type || "image/jpeg";
+    const dataUrl = `data:${mimeType};base64,${base64}`;
 
     return NextResponse.json({
       success: true,
-      url: fileUrl,
-      filename,
+      url: dataUrl,
+      filename: file.name,
       size: file.size,
     });
   } catch (error: unknown) {

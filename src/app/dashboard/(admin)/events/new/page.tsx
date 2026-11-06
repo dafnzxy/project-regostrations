@@ -71,8 +71,8 @@ export default function NewEventPage() {
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError("Ukuran file terlalu besar. Maksimal ukuran gambar adalah 10MB.");
+    if (file.size > 4 * 1024 * 1024) {
+      setUploadError("Ukuran file terlalu besar. Maksimal ukuran gambar adalah 4MB.");
       return;
     }
 
@@ -410,7 +410,7 @@ export default function NewEventPage() {
                       Pilih file gambar poster <span className="text-slate-500 font-normal">atau seret ke sini</span>
                     </div>
                     <p className="text-xs text-slate-500 mt-1">
-                      Format didukung: PNG, JPG, WebP, GIF (Maksimal 10MB)
+                      Format didukung: PNG, JPG, WebP, GIF (Maksimal 4MB)
                     </p>
                     <div className="mt-3.5 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl liquid-pill text-[#17449A] text-xs font-bold">
                       <FileImage className="w-3.5 h-3.5" />
