@@ -20,6 +20,7 @@ const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutes
 
 function safeCompareStrings(a: string, b: string): boolean {
+  if (!a || !b) return false;
   const bufA = Buffer.from(a, "utf-8");
   const bufB = Buffer.from(b, "utf-8");
   if (bufA.length !== bufB.length) {
@@ -48,13 +49,20 @@ export async function loginAdmin(passcode: string) {
 
   const trimmed = passcode.trim();
 
-  // Check against SystemSetting PIN in database
+  // Check against SystemSetting PIN in database or ENV overrides
   const settings = await prisma.systemSetting.findUnique({
     where: { id: "default" },
   });
 
-  const validPin = (settings?.adminPin || "123456").trim();
-  const isValid = safeCompareStrings(trimmed, validPin);
+  const dbPin = (settings?.adminPin || "").trim();
+  const envPin = (process.env.ADMIN_PIN || "123456").trim();
+  const envSuperPass = (process.env.SUPER_ADMIN_PASSWORD || "").trim();
+
+  const isMatchDb = dbPin ? safeCompareStrings(trimmed, dbPin) : false;
+  const isMatchEnv = safeCompareStrings(trimmed, envPin);
+  const isMatchSuper = envSuperPass ? safeCompareStrings(trimmed, envSuperPass) : false;
+
+  const isValid = isMatchDb || isMatchEnv || isMatchSuper;
 
   if (!isValid) {
     const currentCount = (record?.count || 0) + 1;

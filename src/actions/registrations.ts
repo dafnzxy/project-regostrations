@@ -225,10 +225,10 @@ export async function getEventRegistrations(
   }
 
   if (options?.search) {
-    const s = options.search.toLowerCase();
+    const s = options.search.trim();
     where.OR = [
-      { name: { contains: s } },
-      { email: { contains: s } },
+      { name: { contains: s, mode: "insensitive" } },
+      { email: { contains: s, mode: "insensitive" } },
       { phone: { contains: s } },
     ];
   }
