@@ -12,11 +12,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50/90 text-emerald-700 border border-emerald-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Disetujui
         </span>
       );
@@ -24,11 +24,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50/90 text-indigo-700 border border-indigo-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
           Hadir (Checked-In)
         </span>
       );
@@ -36,11 +36,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50/90 text-amber-700 border border-amber-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
           Menunggu Review
         </span>
       );
@@ -48,11 +48,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50/90 text-rose-700 border border-rose-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+          <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
           Ditolak
         </span>
       );
@@ -60,10 +60,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30",
+            "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50/90 text-emerald-700 border border-emerald-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
           Buka
         </span>
       );
@@ -71,7 +72,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-500/15 text-slate-400 border border-slate-500/30",
+            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100/90 text-slate-600 border border-slate-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
@@ -82,7 +83,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30",
+            "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50/90 text-rose-700 border border-rose-200/90 shadow-xs backdrop-blur-md",
             className
           )}
         >
@@ -93,7 +94,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-700 text-slate-300",
+            "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200",
             className
           )}
         >

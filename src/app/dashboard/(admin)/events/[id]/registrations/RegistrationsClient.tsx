@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FormField } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import {
@@ -12,10 +12,15 @@ import {
   addManualAttendee,
   manualCheckInById,
 } from "@/actions/registrations";
+import { updateEvent } from "@/actions/events";
+import {
+  EMAIL_TEMPLATE_PRESETS,
+  resolveEmailTemplateVars,
+} from "@/lib/email-templates";
 import {
   Search,
   Filter,
-  Download,
+  FileSpreadsheet,
   UserPlus,
   CheckCircle2,
   XCircle,
@@ -25,6 +30,12 @@ import {
   Loader2,
   QrCode,
   ExternalLink,
+  Send,
+  Sparkles,
+  Eye,
+  Edit3,
+  Save,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +62,10 @@ interface RegistrationWithLogs {
 interface RegistrationsClientProps {
   eventId: string;
   eventTitle: string;
+  eventLocation?: string | null;
+  eventStartsAt: string;
+  initialEmailSubject?: string | null;
+  initialEmailBody?: string | null;
   formSchema: FormField[];
   initialRegistrations: RegistrationWithLogs[];
 }
@@ -58,6 +73,10 @@ interface RegistrationsClientProps {
 export function RegistrationsClient({
   eventId,
   eventTitle,
+  eventLocation,
+  eventStartsAt,
+  initialEmailSubject,
+  initialEmailBody,
   formSchema,
   initialRegistrations,
 }: RegistrationsClientProps) {
@@ -68,11 +87,50 @@ export function RegistrationsClient({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
 
+  useEffect(() => {
+    setRegistrations(initialRegistrations);
+  }, [initialRegistrations]);
+
   // Manual Add Modal state
   const [showAddModal, setShowAddModal] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+
+  // Email Template & Send Ticket Modal state
+  const defaultPreset = EMAIL_TEMPLATE_PRESETS[0];
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("formal");
+  const [emailSubject, setEmailSubject] = useState<string>(
+    initialEmailSubject || defaultPreset.subject
+  );
+  const [emailBody, setEmailBody] = useState<string>(
+    initialEmailBody || defaultPreset.body
+  );
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  // Target participant for "Kirim Tiket Email" modal (null = global template config / bulk)
+  const [emailModalTarget, setEmailModalTarget] =
+    useState<RegistrationWithLogs | null>(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [sendingModalEmail, setSendingModalEmail] = useState(false);
+  const [origin, setOrigin] = useState("http://localhost:3000");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const formattedEventDate = (() => {
+    try {
+      return new Intl.DateTimeFormat("id-ID", {
+        dateStyle: "full",
+        timeStyle: "short",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(eventStartsAt));
+    } catch {
+      return "-";
+    }
+  })();
 
   // Filter registrations
   const filtered = registrations.filter((reg) => {
@@ -101,13 +159,90 @@ export function RegistrationsClient({
     }
   };
 
+  const applyPreset = (presetId: string) => {
+    const found = EMAIL_TEMPLATE_PRESETS.find((p) => p.id === presetId);
+    if (found) {
+      setSelectedPresetId(found.id);
+      setEmailSubject(found.subject);
+      setEmailBody(found.body);
+    }
+  };
+
+  const openSendTicketModal = (reg?: RegistrationWithLogs) => {
+    setEmailModalTarget(reg || null);
+    setShowEmailModal(true);
+  };
+
+  const handleSaveDefaultTemplate = async () => {
+    setSavingTemplate(true);
+    try {
+      await updateEvent(eventId, {
+        emailSubject,
+        emailBody,
+      });
+      alert("✓ Template email default berhasil disimpan untuk event ini!");
+      router.refresh();
+    } catch (e: any) {
+      alert("Gagal menyimpan template: " + e.message);
+    } finally {
+      setSavingTemplate(false);
+    }
+  };
+
+  const handleSendFromModal = async () => {
+    if (!emailModalTarget) return;
+    setSendingModalEmail(true);
+    try {
+      let res: any;
+      if (emailModalTarget.status === "PENDING") {
+        const approveRes = await approveRegistration(
+          emailModalTarget.id,
+          "Admin",
+          {
+            subject: emailSubject,
+            body: emailBody,
+          }
+        );
+        res = approveRes.emailResult;
+      } else {
+        res = await resendRsvpEmail(emailModalTarget.id, {
+          subject: emailSubject,
+          body: emailBody,
+        });
+      }
+
+      setShowEmailModal(false);
+      if (res?.isRealEmail) {
+        alert(
+          `✓ E-Tiket & QR Code berhasil dikirim ke kotak masuk ${emailModalTarget.email}!`
+        );
+      } else if (res?.error) {
+        alert(
+          `✓ Peserta Disetujui & E-Tiket Terbit!\n\nNamun pengiriman SMTP otomatis gagal karena: ${res.error}\n\nTips: Gmail mewajibkan 16-digit "App Password" (bukan password login biasa) di menu Pengaturan Email & PIN, ATAU gunakan tombol "Buka di Gmail Web" pada menu Kirim Tiket.`
+        );
+      } else {
+        alert(
+          `✓ E-Tiket telah diterbitkan untuk ${emailModalTarget.name}!\n\nCatatan: Pengiriman email masih dalam mode simulasi karena SMTP belum diatur. Anda dapat mengisi App Password Gmail di menu "Pengaturan Email & PIN" agar email langsung masuk ke inbox peserta.`
+        );
+      }
+      router.refresh();
+    } catch (e: any) {
+      alert("Gagal mengirim tiket: " + e.message);
+    } finally {
+      setSendingModalEmail(false);
+    }
+  };
+
   const handleApprove = async (id: string) => {
     setLoadingAction(`approve_${id}`);
     try {
-      const res = await approveRegistration(id);
+      const res = await approveRegistration(id, "Admin", {
+        subject: emailSubject,
+        body: emailBody,
+      });
       if (res.emailResult?.isRealEmail) {
         alert(
-          `✓ Peserta Berhasil Disetujui (ACC)!\n\nEmail RSVP beserta QR Code telah dikirimkan langsung ke kotak masuk ${res.emailResult.recipientEmail}.`
+          `✓ Peserta Berhasil Disetujui (ACC)!\n\nEmail E-Tiket beserta QR Code telah dikirimkan langsung ke kotak masuk ${res.emailResult.recipientEmail}.`
         );
       } else {
         alert(
@@ -124,12 +259,19 @@ export function RegistrationsClient({
 
   const handleBulkApprove = async () => {
     if (selectedIds.length === 0) return;
-    if (!confirm(`Setujui ${selectedIds.length} peserta terpilih sekaligus dan kirim email RSVP QR?`))
+    if (
+      !confirm(
+        `Setujui ${selectedIds.length} peserta terpilih sekaligus dan kirim E-Tiket QR Code sesuai template aktif?`
+      )
+    )
       return;
 
     setLoadingAction("bulk_approve");
     try {
-      await bulkApproveRegistrations(selectedIds);
+      await bulkApproveRegistrations(selectedIds, "Admin", {
+        subject: emailSubject,
+        body: emailBody,
+      });
       setSelectedIds([]);
       router.refresh();
     } catch (e: any) {
@@ -165,19 +307,6 @@ export function RegistrationsClient({
     }
   };
 
-  const handleResendEmail = async (id: string) => {
-    setLoadingAction(`email_${id}`);
-    try {
-      await resendRsvpEmail(id);
-      alert("Email RSVP berhasil dikirim ulang!");
-      router.refresh();
-    } catch (e: any) {
-      alert("Gagal kirim email: " + e.message);
-    } finally {
-      setLoadingAction(null);
-    }
-  };
-
   const handleManualCheckIn = async (id: string) => {
     setLoadingAction(`checkin_${id}`);
     try {
@@ -208,74 +337,54 @@ export function RegistrationsClient({
     }
   };
 
-  const exportToCsv = () => {
-    if (registrations.length === 0) return;
-
-    // Headers
-    const headers = ["Nama", "Email", "Nomor WhatsApp", "Status", "Token QR"];
-    formSchema.forEach((f) => headers.push(f.label));
-
-    const rows = registrations.map((r) => {
-      let answers: Record<string, any> = {};
-      try {
-        answers = JSON.parse(r.answers || "{}");
-      } catch (e) {
-        answers = {};
-      }
-
-      const row = [
-        `"${r.name.replace(/"/g, '""')}"`,
-        `"${r.email}"`,
-        `"${r.phone || ""}"`,
-        `"${r.status}"`,
-        `"${r.qrToken}"`,
-      ];
-
-      formSchema.forEach((f) => {
-        const val = answers[f.id] || "";
-        const formattedVal = Array.isArray(val) ? val.join(", ") : String(val);
-        row.push(`"${formattedVal.replace(/"/g, '""')}"`);
-      });
-
-      return row.join(",");
-    });
-
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Peserta-${eventTitle.replace(/\s+/g, "-")}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleExportExcel = () => {
+    const url = `/api/events/${eventId}/export?status=${encodeURIComponent(
+      statusFilter
+    )}`;
+    window.location.href = url;
   };
+
+  const previewName = emailModalTarget?.name || "Budi Santoso (Contoh Peserta)";
+  const previewToken = emailModalTarget?.qrToken || "EVT-2026-SAMPLE88";
+  const resolvedPreviewSubject = resolveEmailTemplateVars(emailSubject, {
+    name: previewName,
+    event: eventTitle,
+    location: eventLocation,
+    date: formattedEventDate,
+  });
+  const resolvedPreviewBody = resolveEmailTemplateVars(emailBody, {
+    name: previewName,
+    event: eventTitle,
+    location: eventLocation,
+    date: formattedEventDate,
+  });
 
   return (
     <div className="space-y-6">
-      {/* Controls: Search, Filter, Bulk Actions, Export */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
+      {/* Controls: Search, Filter, Bulk Actions, Email Template, Export Excel */}
+      <div className="p-4 sm:p-5 rounded-3xl liquid-card flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 flex-1">
           {/* Search */}
-          <div className="relative min-w-[240px]">
+          <div className="relative flex-1 sm:max-w-xs">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari nama, email, no HP..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full pl-9 pr-4 py-2.5 sm:py-2 rounded-xl liquid-input text-slate-900 placeholder-slate-400 text-xs"
             />
           </div>
 
           {/* Filter Status */}
           <div className="flex items-center gap-1.5">
-            <Filter className="w-3.5 h-3.5 text-slate-400" />
+            <Filter className="w-3.5 h-3.5 text-slate-500 hidden sm:inline" />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full sm:w-auto px-3 py-2.5 sm:py-2 rounded-xl liquid-input text-slate-900 text-xs font-semibold"
             >
-              <option value="ALL">Semua Status</option>
+              <option value="ALL">Semua Status ({registrations.length})</option>
               <option value="PENDING">Pending (Menunggu Review)</option>
               <option value="APPROVED">Approved (Disetujui)</option>
               <option value="CHECKED_IN">Checked-In (Hadir)</option>
@@ -284,71 +393,261 @@ export function RegistrationsClient({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
           {selectedIds.length > 0 && (
             <button
+              type="button"
               onClick={handleBulkApprove}
               disabled={loadingAction === "bulk_approve"}
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20 flex items-center gap-1.5 transition-all"
+              className="col-span-2 sm:col-span-1 px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
               {loadingAction === "bulk_approve" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
               ) : (
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
               )}
-              <span>Setujui ({selectedIds.length})</span>
+              <span>ACC & Kirim ({selectedIds.length})</span>
             </button>
           )}
 
           <button
-            onClick={() => setShowAddModal(true)}
-            className="px-3 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition-all"
+            type="button"
+            onClick={() => openSendTicketModal()}
+            className="px-3 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-[#17449A] liquid-pill flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Tambah Manual</span>
+            <Mail className="w-3.5 h-3.5 text-[#17449A] shrink-0" />
+            <span className="truncate">Template Email</span>
           </button>
 
           <button
-            onClick={exportToCsv}
-            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition-all"
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            className="px-3 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
+            <UserPlus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Tambah Manual</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExportExcel}
+            className="col-span-2 sm:col-span-1 px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-900/15 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
+            <span>Export Excel (.xlsx)</span>
           </button>
         </div>
       </div>
 
-      {/* Table Container */}
-      <div className="rounded-2xl glass-panel border border-slate-800/80 overflow-hidden shadow-xl">
+      {/* =================================================================== */}
+      {/* MOBILE PARTICIPANT CARDS (< 768px)                                  */}
+      {/* =================================================================== */}
+      <div className="md:hidden space-y-3">
+        {filtered.length === 0 ? (
+          <div className="p-8 rounded-3xl liquid-glass text-center text-slate-500 text-xs font-medium">
+            Tidak ada peserta yang cocok dengan kriteria pencarian.
+          </div>
+        ) : (
+          filtered.map((r) => {
+            let answers: Record<string, any> = {};
+            try {
+              answers = JSON.parse(r.answers || "{}");
+            } catch {
+              answers = {};
+            }
+
+            const isSelected = selectedIds.includes(r.id);
+            const isPending = r.status === "PENDING";
+            const isApproved = r.status === "APPROVED";
+            const emailLog = r.emailLogs?.[0];
+
+            return (
+              <div
+                key={r.id}
+                className={`p-4 rounded-2xl liquid-glass space-y-3 ${
+                  isSelected ? "ring-2 ring-indigo-500/40 bg-indigo-50/50" : ""
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={(e) => handleSelectOne(r.id, e.target.checked)}
+                      className="accent-indigo-600 w-4 h-4 rounded mt-0.5 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-sm text-slate-900 break-words">
+                        {r.name}
+                      </div>
+                      <div className="text-xs text-slate-600 break-all">
+                        {r.email}
+                      </div>
+                      {r.phone && (
+                        <div className="text-[11px] text-slate-500 font-mono mt-0.5">
+                          {r.phone}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <StatusBadge status={r.status} className="shrink-0" />
+                </div>
+
+                {/* Custom answers & email status */}
+                <div className="p-2.5 rounded-xl liquid-card grid grid-cols-2 gap-2 text-[11px]">
+                  {formSchema.slice(0, 2).map((f) => {
+                    const val = answers[f.id] || "-";
+                    const displayVal = Array.isArray(val)
+                      ? val.join(", ")
+                      : String(val);
+                    return (
+                      <div key={f.id} className="min-w-0">
+                        <span className="text-slate-400 font-semibold block truncate">
+                          {f.label}
+                        </span>
+                        <span className="font-bold text-slate-800 block truncate">
+                          {displayVal}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div>
+                    <span className="text-slate-400 font-semibold block">
+                      Status Email
+                    </span>
+                    {emailLog ? (
+                      <span
+                        className={`font-bold font-mono ${
+                          emailLog.status === "SENT"
+                            ? "text-emerald-600"
+                            : "text-rose-600"
+                        }`}
+                      >
+                        {emailLog.status === "SENT" ? "TERKIRIM" : emailLog.status}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">Belum dikirim</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mobile Actions */}
+                <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                  {isPending && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleApprove(r.id)}
+                        disabled={loadingAction === `approve_${r.id}`}
+                        className="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        {loadingAction === `approve_${r.id}` ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        <span>ACC & Kirim</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleReject(r.id)}
+                        disabled={loadingAction === `reject_${r.id}`}
+                        className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 cursor-pointer"
+                        title="Tolak"
+                      >
+                        <XCircle className="w-4 h-4" />
+                      </button>
+                    </>
+                  )}
+
+                  {isApproved && (
+                    <button
+                      type="button"
+                      onClick={() => handleManualCheckIn(r.id)}
+                      disabled={loadingAction === `checkin_${r.id}`}
+                      className="flex-1 py-2 px-3 rounded-xl bg-[#17449A]/10 hover:bg-[#17449A]/15 text-[#17449A] border border-[#17449A]/20 text-xs font-bold cursor-pointer"
+                    >
+                      Check-In Manual
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => openSendTicketModal(r)}
+                    className="flex-1 py-2 px-3 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] inline-flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer"
+                  >
+                    <Send className="w-3.5 h-3.5 text-[#17449A]" />
+                    <span>Kirim Tiket</span>
+                  </button>
+
+                  <Link
+                    href={`/ticket/${r.qrToken}`}
+                    target="_blank"
+                    className="p-2 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A]"
+                    title="Buka E-Tiket"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(r.id)}
+                    disabled={loadingAction === `delete_${r.id}`}
+                    className="p-2 rounded-xl liquid-pill text-slate-500 hover:text-rose-600 cursor-pointer"
+                    title="Hapus"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* =================================================================== */}
+      {/* TABLET & DESKTOP TABLE CONTAINER (>= 768px)                         */}
+      {/* =================================================================== */}
+      <div className="hidden md:block rounded-3xl liquid-glass overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400 select-none">
+              <tr className="bg-slate-100/80 border-b border-slate-200/80 text-slate-600 select-none">
                 <th className="p-3.5 w-10 text-center">
                   <input
                     type="checkbox"
-                    checked={selectedIds.length === filtered.length && filtered.length > 0}
+                    checked={
+                      selectedIds.length === filtered.length &&
+                      filtered.length > 0
+                    }
                     onChange={(e) => handleSelectAll(e.target.checked)}
                     className="accent-indigo-600 w-3.5 h-3.5 rounded cursor-pointer"
                   />
                 </th>
-                <th className="p-3.5 font-semibold text-slate-300">Peserta</th>
-                <th className="p-3.5 font-semibold text-slate-300">Status</th>
+                <th className="p-3.5 font-bold text-slate-700">Peserta</th>
+                <th className="p-3.5 font-bold text-slate-700">Status</th>
                 {formSchema.slice(0, 3).map((f) => (
-                  <th key={f.id} className="p-3.5 font-semibold text-slate-300 whitespace-nowrap">
+                  <th
+                    key={f.id}
+                    className="p-3.5 font-bold text-slate-700 whitespace-nowrap"
+                  >
                     {f.label}
                   </th>
                 ))}
-                <th className="p-3.5 font-semibold text-slate-300">Email RSVP</th>
-                <th className="p-3.5 font-semibold text-slate-300 text-right">Aksi</th>
+                <th className="p-3.5 font-bold text-slate-700">
+                  Status Email
+                </th>
+                <th className="p-3.5 font-bold text-slate-700 text-right">
+                  Aksi & Kirim Tiket
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-200/70">
               {filtered.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5 + Math.min(3, formSchema.length)}
-                    className="p-8 text-center text-slate-500 text-xs"
+                    className="p-8 text-center text-slate-500 text-xs font-medium"
                   >
                     Tidak ada peserta yang cocok dengan kriteria pencarian.
                   </td>
@@ -358,37 +657,40 @@ export function RegistrationsClient({
                   let answers: Record<string, any> = {};
                   try {
                     answers = JSON.parse(r.answers || "{}");
-                  } catch (e) {
+                  } catch {
                     answers = {};
                   }
 
                   const isSelected = selectedIds.includes(r.id);
                   const isPending = r.status === "PENDING";
                   const isApproved = r.status === "APPROVED";
-                  const isCheckedIn = r.status === "CHECKED_IN";
                   const emailLog = r.emailLogs?.[0];
 
                   return (
                     <tr
                       key={r.id}
-                      className={`hover:bg-slate-900/50 transition-colors ${
-                        isSelected ? "bg-indigo-950/20" : ""
+                      className={`hover:bg-white/80 transition-colors ${
+                        isSelected ? "bg-indigo-50/60" : ""
                       }`}
                     >
                       <td className="p-3.5 text-center">
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={(e) => handleSelectOne(r.id, e.target.checked)}
+                          onChange={(e) =>
+                            handleSelectOne(r.id, e.target.checked)
+                          }
                           className="accent-indigo-600 w-3.5 h-3.5 rounded cursor-pointer"
                         />
                       </td>
 
                       <td className="p-3.5">
-                        <div className="font-semibold text-white">{r.name}</div>
-                        <div className="text-[11px] text-slate-400">{r.email}</div>
+                        <div className="font-bold text-slate-900">{r.name}</div>
+                        <div className="text-[11px] text-slate-600">
+                          {r.email}
+                        </div>
                         {r.phone && (
-                          <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                          <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                             {r.phone}
                           </div>
                         )}
@@ -400,9 +702,14 @@ export function RegistrationsClient({
 
                       {formSchema.slice(0, 3).map((f) => {
                         const val = answers[f.id] || "-";
-                        const displayVal = Array.isArray(val) ? val.join(", ") : String(val);
+                        const displayVal = Array.isArray(val)
+                          ? val.join(", ")
+                          : String(val);
                         return (
-                          <td key={f.id} className="p-3.5 text-slate-300 max-w-[160px] truncate">
+                          <td
+                            key={f.id}
+                            className="p-3.5 text-slate-700 font-medium max-w-[160px] truncate"
+                          >
                             {displayVal}
                           </td>
                         );
@@ -411,44 +718,51 @@ export function RegistrationsClient({
                       <td className="p-3.5">
                         {emailLog ? (
                           <span
-                            className={`inline-flex items-center gap-1 text-[11px] font-mono ${
+                            className={`inline-flex items-center gap-1 text-[11px] font-bold font-mono ${
                               emailLog.status === "SENT"
-                                ? "text-emerald-400"
+                                ? "text-emerald-600"
                                 : emailLog.status === "FAILED"
-                                ? "text-rose-400"
-                                : "text-amber-400"
+                                ? "text-rose-600"
+                                : "text-amber-600"
                             }`}
                           >
                             <Mail className="w-3 h-3" />
-                            {emailLog.status}
+                            {emailLog.status === "SENT"
+                              ? "TERKIRIM"
+                              : emailLog.status}
                           </span>
                         ) : (
-                          <span className="text-slate-400 text-[11px]">-</span>
+                          <span className="text-slate-400 text-[11px] font-medium">
+                            Belum dikirim
+                          </span>
                         )}
                       </td>
 
                       <td className="p-3.5 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1.5">
                           {/* Approve / Reject buttons for PENDING */}
                           {isPending && (
                             <>
                               <button
+                                type="button"
                                 onClick={() => handleApprove(r.id)}
                                 disabled={loadingAction === `approve_${r.id}`}
-                                title="Setujui Pendaftar & Kirim RSVP"
-                                className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 transition-colors"
+                                title="ACC Cepat & Langsung Kirim E-Tiket"
+                                className="px-2.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition-colors inline-flex items-center gap-1 cursor-pointer shadow-xs"
                               >
                                 {loadingAction === `approve_${r.id}` ? (
                                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 ) : (
                                   <Check className="w-3.5 h-3.5" />
                                 )}
+                                <span>ACC & Kirim</span>
                               </button>
                               <button
+                                type="button"
                                 onClick={() => handleReject(r.id)}
                                 disabled={loadingAction === `reject_${r.id}`}
                                 title="Tolak Pendaftaran"
-                                className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                                className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 transition-colors cursor-pointer"
                               >
                                 <XCircle className="w-3.5 h-3.5" />
                               </button>
@@ -458,43 +772,44 @@ export function RegistrationsClient({
                           {/* Fast Check-In for APPROVED */}
                           {isApproved && (
                             <button
+                              type="button"
                               onClick={() => handleManualCheckIn(r.id)}
                               disabled={loadingAction === `checkin_${r.id}`}
                               title="Tandai Hadir (Check-In Manual)"
-                              className="px-2 py-1 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 text-[11px] font-medium transition-colors"
+                              className="px-2.5 py-1.5 rounded-xl bg-[#17449A]/10 hover:bg-[#17449A]/15 text-[#17449A] border border-[#17449A]/20 text-[11px] font-bold transition-colors cursor-pointer"
                             >
                               Check-In
                             </button>
                           )}
 
-                          {/* Resend RSVP Email */}
-                          {(isApproved || isCheckedIn) && (
-                            <button
-                              onClick={() => handleResendEmail(r.id)}
-                              disabled={loadingAction === `email_${r.id}`}
-                              title="Kirim Ulang Email RSVP & QR"
-                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          {/* Open Ready-to-Send Email Template Modal */}
+                          <button
+                            type="button"
+                            onClick={() => openSendTicketModal(r)}
+                            title="Buka Template Email & Kirim E-Tiket"
+                            className="px-2.5 py-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] inline-flex items-center gap-1 text-[11px] font-bold cursor-pointer"
+                          >
+                            <Send className="w-3 h-3 text-[#17449A]" />
+                            <span>Kirim Tiket</span>
+                          </button>
 
                           {/* View Digital Ticket */}
                           <Link
                             href={`/ticket/${r.qrToken}`}
                             target="_blank"
                             title="Buka E-Tiket Digital"
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                            className="p-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A]"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </Link>
 
                           {/* Delete */}
                           <button
+                            type="button"
                             onClick={() => handleDelete(r.id)}
                             disabled={loadingAction === `delete_${r.id}`}
                             title="Hapus Peserta"
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors"
+                            className="p-1.5 rounded-xl liquid-pill text-slate-500 hover:text-rose-600 cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -509,19 +824,310 @@ export function RegistrationsClient({
         </div>
       </div>
 
+      {/* ===================================================================== */}
+      {/* MODAL TEMPLATE EMAIL E-TIKET SIAP KIRIM                               */}
+      {/* ===================================================================== */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="max-w-3xl w-full liquid-glass rounded-3xl p-6 sm:p-8 space-y-6 my-8 max-h-[92vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-200/80">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#17449A]/10 border border-[#17449A]/20 flex items-center justify-center text-[#17449A] flex-shrink-0">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900">
+                    {emailModalTarget
+                      ? `Kirim E-Tiket ke ${emailModalTarget.name}`
+                      : "Template Email E-Tiket Siap Pakai"}
+                  </h3>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    {emailModalTarget
+                      ? `Tujuan: ${emailModalTarget.email} • Pilih template di bawah lalu klik Kirim Sekarang.`
+                      : "Pilih desain kalimat email E-Tiket yang otomatis dikirim saat peserta disetujui (ACC)."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowEmailModal(false)}
+                className="p-2 rounded-xl liquid-pill text-slate-500 hover:text-slate-900 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 1. Preset Selector Cards */}
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold uppercase tracking-wider text-[#17449A] flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>1. Pilih Template Siap Pakai (1-Klik Terisi)</span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setShowTemplateEditor(!showTemplateEditor)}
+                  className="text-xs font-bold text-[#17449A] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  {showTemplateEditor ? (
+                    <>
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Lihat Tampilan Preview Saja</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Ubah Kata-Kata / Kustomisasi</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {EMAIL_TEMPLATE_PRESETS.map((preset) => {
+                  const isSelected = selectedPresetId === preset.id;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => applyPreset(preset.id)}
+                      className={`text-left p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-[#17449A]/10 border-[#17449A]/40 text-slate-900 shadow-sm"
+                          : "liquid-card text-slate-700 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="font-extrabold text-xs text-slate-900">
+                          {preset.name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isSelected
+                              ? "bg-[#17449A] text-white"
+                              : "bg-slate-200/80 text-slate-600"
+                          }`}
+                        >
+                          {preset.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-snug">
+                        {preset.description}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Optional Custom Text Editor */}
+            {showTemplateEditor && (
+              <div className="p-4 rounded-2xl liquid-card space-y-3 animate-fade-in">
+                <div className="text-[11px] text-slate-600 flex flex-wrap items-center gap-1.5">
+                  <span className="font-semibold">Variabel otomatis:</span>
+                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                    {"{{name}}"}
+                  </code>
+                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                    {"{{event}}"}
+                  </code>
+                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                    {"{{date}}"}
+                  </code>
+                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                    {"{{location}}"}
+                  </code>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Subjek Email
+                  </label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={(e) => setEmailSubject(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl liquid-input text-slate-900 text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Isi Pesan Pengantar Email
+                  </label>
+                  <textarea
+                    rows={5}
+                    value={emailBody}
+                    onChange={(e) => setEmailBody(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl liquid-input text-slate-900 text-xs leading-relaxed"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* 2. Live Preview of E-Ticket Email */}
+            <div className="space-y-2">
+              <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5" />
+                <span>2. Pratinjau Email E-Tiket yang Diterima Peserta</span>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
+                {/* Email Header Bar */}
+                <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 text-xs space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 w-14">Kepada:</span>
+                    <span className="text-slate-800 font-semibold">
+                      {emailModalTarget
+                        ? `${emailModalTarget.name} <${emailModalTarget.email}>`
+                        : "peserta@email.com"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 w-14">Subjek:</span>
+                    <span className="text-slate-900 font-bold">
+                      {resolvedPreviewSubject}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Email Visual Body Card */}
+                <div className="p-5 bg-white text-slate-800 text-xs space-y-4">
+                  <div className="bg-[#17449A] p-4 rounded-xl text-white text-center">
+                    <div className="text-[10px] font-bold uppercase tracking-widest opacity-85">
+                      E-Ticket Resmi Acara
+                    </div>
+                    <div className="text-base font-extrabold mt-0.5">
+                      {eventTitle}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-slate-700 leading-relaxed whitespace-pre-line text-xs">
+                    {resolvedPreviewBody}
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-[11px] text-slate-600">
+                    <div>
+                      <strong className="text-slate-800">👤 Nama Peserta:</strong>{" "}
+                      {previewName}
+                    </div>
+                    <div>
+                      <strong className="text-slate-800">🗓 Waktu Acara:</strong>{" "}
+                      {formattedEventDate}
+                    </div>
+                    <div>
+                      <strong className="text-slate-800">📍 Lokasi / Venue:</strong>{" "}
+                      {eventLocation || "Akan diinfokan panitia"}
+                    </div>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-white border-2 border-[#17449A] text-[#17449A] mx-auto">
+                      <QrCode className="w-10 h-10" />
+                    </div>
+                    <div className="font-mono text-[11px] font-bold text-slate-700">
+                      TOKEN: {previewToken}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      [QR Code Unik Peserta Otomatis Terlampir di Email]
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200/80">
+              <button
+                type="button"
+                onClick={handleSaveDefaultTemplate}
+                disabled={savingTemplate}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs font-bold text-slate-800 liquid-pill flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                {savingTemplate ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Save className="w-3.5 h-3.5 text-[#17449A]" />
+                )}
+                <span>Simpan Sebagai Default Event</span>
+              </button>
+
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowEmailModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 liquid-pill cursor-pointer"
+                >
+                  Tutup
+                </button>
+
+                {emailModalTarget && (
+                  <>
+                    <a
+                      href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                        emailModalTarget.email
+                      )}&su=${encodeURIComponent(
+                        resolvedPreviewSubject
+                      )}&body=${encodeURIComponent(
+                        `${resolvedPreviewBody}\n\n----------------------------------------\nDETAIL E-TIKET & QR CODE CHECK-IN\n----------------------------------------\nNama Peserta : ${emailModalTarget.name}\nAcara        : ${eventTitle}\nWaktu        : ${formattedEventDate}\nLokasi       : ${eventLocation || "Sesuai undangan"}\nToken QR     : ${emailModalTarget.qrToken}\n\nBuka & Unduh QR Code E-Tiket Anda di sini:\n${origin}/ticket/${emailModalTarget.qrToken}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-700 liquid-pill flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Kirim via Gmail Web</span>
+                    </a>
+
+                    <button
+                      type="button"
+                      onClick={handleSendFromModal}
+                      disabled={sendingModalEmail}
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/25 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {sendingModalEmail ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>Mengirim E-Tiket...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          <span>
+                            {emailModalTarget.status === "PENDING"
+                              ? "Setujui (ACC) & Kirim Otomatis"
+                              : "Kirim E-Tiket Sekarang"}
+                          </span>
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Manual Add Attendee Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-md w-full glass-panel rounded-2xl p-6 border border-slate-700 space-y-4">
-            <h3 className="text-base font-bold text-white">Tambah Peserta Manual</h3>
-            <p className="text-xs text-slate-400">
-              Tambahkan peserta secara langsung dari meja registrasi atau panitia.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-md animate-fade-in">
+          <div className="max-w-md w-full liquid-glass rounded-3xl p-6 space-y-4">
+            <h3 className="text-base font-extrabold text-slate-900">
+              Tambah Peserta Manual
+            </h3>
+            <p className="text-xs text-slate-600">
+              Tambahkan peserta secara langsung dari meja registrasi atau
+              panitia.
             </p>
 
             <form onSubmit={handleAddManualSubmit} className="space-y-4 pt-2">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Nama Lengkap <span className="text-rose-400">*</span>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Nama Lengkap <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -529,13 +1135,13 @@ export function RegistrationsClient({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Nama peserta..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Alamat Email <span className="text-rose-400">*</span>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Alamat Email <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="email"
@@ -543,12 +1149,12 @@ export function RegistrationsClient({
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   placeholder="email@domain.com"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
                   Nomor WhatsApp / HP
                 </label>
                 <input
@@ -556,7 +1162,7 @@ export function RegistrationsClient({
                   value={newPhone}
                   onChange={(e) => setNewPhone(e.target.value)}
                   placeholder="0812..."
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                 />
               </div>
 
@@ -564,13 +1170,13 @@ export function RegistrationsClient({
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 liquid-pill cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25 cursor-pointer"
                 >
                   Tambah & Setujui
                 </button>

@@ -3,8 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { requireAdminAuth } from "./auth";
 
 export async function getPrizes(eventId: string) {
+  await requireAdminAuth();
+
   return await prisma.prize.findMany({
     where: { eventId },
     orderBy: { order: "asc" },
@@ -20,6 +23,8 @@ export async function getPrizes(eventId: string) {
 }
 
 export async function createPrize(eventId: string, name: string, quantity: number = 1) {
+  await requireAdminAuth();
+
   const count = await prisma.prize.count({ where: { eventId } });
   const prize = await prisma.prize.create({
     data: {
@@ -34,6 +39,8 @@ export async function createPrize(eventId: string, name: string, quantity: numbe
 }
 
 export async function deletePrize(id: string) {
+  await requireAdminAuth();
+
   const prize = await prisma.prize.delete({
     where: { id },
   });
@@ -48,6 +55,8 @@ export async function getEligibleParticipants(
     excludePreviousWinners: boolean;
   }
 ) {
+  await requireAdminAuth();
+
   const statuses =
     options.poolType === "CHECKED_IN"
       ? ["CHECKED_IN"]
@@ -92,6 +101,36 @@ export async function drawWinner(
     excludePreviousWinners: boolean;
   }
 ) {
+  await requireAdminAuth();
+
+  // Check prize existence & remaining quantity quota
+  const prize = await prisma.prize.findUnique({
+    where: { id: prizeId },
+    include: {
+      _count: {
+        select: {
+          prizeDraws: {
+            where: { status: "VALID" },
+          },
+        },
+      },
+    },
+  });
+
+  if (!prize || prize.eventId !== eventId) {
+    return {
+      success: false,
+      message: "Kategori hadiah tidak ditemukan untuk event ini.",
+    };
+  }
+
+  if (prize._count.prizeDraws >= prize.quantity) {
+    return {
+      success: false,
+      message: `Kuota pemenang untuk hadiah "${prize.name}" sudah habis (${prize.quantity}/${prize.quantity} unit terpakai). Silakan pilih hadiah lain atau klik "Undi Ulang" pada pemenang sebelumnya.`,
+    };
+  }
+
   const eligible = await getEligibleParticipants(eventId, options);
 
   if (eligible.length === 0) {
@@ -131,6 +170,8 @@ export async function drawWinner(
 }
 
 export async function redrawWinner(drawId: string) {
+  await requireAdminAuth();
+
   const draw = await prisma.prizeDraw.update({
     where: { id: drawId },
     data: { status: "REDRAWN" },
@@ -140,6 +181,8 @@ export async function redrawWinner(drawId: string) {
 }
 
 export async function getWinnerHistory(eventId: string) {
+  await requireAdminAuth();
+
   return await prisma.prizeDraw.findMany({
     where: { eventId },
     orderBy: { drawnAt: "desc" },

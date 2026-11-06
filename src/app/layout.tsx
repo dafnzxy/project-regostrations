@@ -8,9 +8,9 @@ const plusJakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "EventPass - Platform Manajemen & Registrasi Event",
+  title: "YORINDO registration - Platform Manajemen & Registrasi Event",
   description:
-    "Sistem manajemen registrasi event end-to-end, custom form builder, RSVP QR Code instan, check-in hari-H, dan doorprize spin wheel otomatis.",
+    "Sistem manajemen registrasi event end-to-end YORINDO registration, custom form builder, RSVP QR Code instan, check-in hari-H, dan doorprize spin wheel otomatis.",
 };
 
 export default function RootLayout({
@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="id" className={`${plusJakarta.variable} h-full antialiased`}>
-      <body className="min-h-full font-sans bg-slate-950 text-slate-100 selection:bg-indigo-500 selection:text-white flex flex-col">
+      <body className="min-h-full font-sans bg-white text-slate-900 selection:bg-indigo-500 selection:text-white flex flex-col">
         {children}
       </body>
     </html>

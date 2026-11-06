@@ -1,8 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendRsvpEmail } from "@/lib/email";
+import { requireAdminAuth } from "./auth";
+import { FormField } from "@/types";
+
+// Anti-spam per-IP rate limiting for public registration endpoint
+const registrationRateLimit = new Map<
+  string,
+  { count: number; windowResetAt: number }
+>();
+const REG_MAX_PER_WINDOW = 10;
+const REG_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 export async function registerParticipant(
   slug: string,
@@ -14,9 +25,68 @@ export async function registerParticipant(
     honeypot?: string;
   }
 ) {
-  // Anti-spam honeypot
+  // 1. Anti-spam honeypot
   if (data.honeypot) {
     return { success: false, message: "Aktivitas bot terdeteksi." };
+  }
+
+  // 2. Per-IP Rate Limiting
+  const headerStore = await headers();
+  const clientIp =
+    headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    headerStore.get("x-real-ip") ||
+    "local-client";
+  const now = Date.now();
+  const rateEntry = registrationRateLimit.get(clientIp);
+  if (rateEntry && rateEntry.windowResetAt > now) {
+    if (rateEntry.count >= REG_MAX_PER_WINDOW) {
+      return {
+        success: false,
+        message:
+          "Terlalu banyak permintaan pendaftaran dari jaringan Anda. Silakan tunggu beberapa menit lalu coba kembali.",
+      };
+    }
+    rateEntry.count += 1;
+  } else {
+    registrationRateLimit.set(clientIp, {
+      count: 1,
+      windowResetAt: now + REG_WINDOW_MS,
+    });
+  }
+
+  // 3. Strict Input Validation & Sanitization
+  const cleanName = (data.name || "").trim();
+  const cleanEmail = (data.email || "").toLowerCase().trim();
+  const cleanPhone = data.phone ? data.phone.trim() : null;
+
+  if (cleanName.length < 2 || cleanName.length > 150) {
+    return {
+      success: false,
+      message: "Nama lengkap wajib diisi (minimal 2 hingga 150 karakter).",
+    };
+  }
+
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailRegex.test(cleanEmail) || cleanEmail.length > 200) {
+    return {
+      success: false,
+      message: "Format alamat email tidak valid.",
+    };
+  }
+
+  if (cleanPhone && cleanPhone.length > 30) {
+    return {
+      success: false,
+      message: "Nomor telepon terlalu panjang (maksimal 30 karakter).",
+    };
+  }
+
+  const serializedAnswers = JSON.stringify(data.answers || {});
+  if (serializedAnswers.length > 10000) {
+    return {
+      success: false,
+      message: "Data jawaban formulir melebihi batas ukuran yang diizinkan.",
+    };
   }
 
   const event = await prisma.event.findUnique({
@@ -53,12 +123,36 @@ export async function registerParticipant(
     };
   }
 
+  // 4. Server-side validation of required custom fields from formSchema
+  try {
+    const schemaFields: FormField[] = JSON.parse(event.formSchema || "[]");
+    const answersObj = data.answers || {};
+    for (const field of schemaFields) {
+      if (field.required) {
+        const val = answersObj[field.id];
+        const isEmpty =
+          val === undefined ||
+          val === null ||
+          (typeof val === "string" && val.trim() === "") ||
+          (Array.isArray(val) && val.length === 0);
+        if (isEmpty) {
+          return {
+            success: false,
+            message: `Kolom "${field.label}" wajib diisi.`,
+          };
+        }
+      }
+    }
+  } catch {
+    // Ignore malformed schema JSON
+  }
+
   // Check duplicate email
   const existing = await prisma.registration.findUnique({
     where: {
       eventId_email: {
         eventId: event.id,
-        email: data.email.toLowerCase().trim(),
+        email: cleanEmail,
       },
     },
   });
@@ -76,10 +170,10 @@ export async function registerParticipant(
   const registration = await prisma.registration.create({
     data: {
       eventId: event.id,
-      name: data.name.trim(),
-      email: data.email.toLowerCase().trim(),
-      phone: data.phone?.trim() || null,
-      answers: JSON.stringify(data.answers || {}),
+      name: cleanName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      answers: serializedAnswers,
       status: initialStatus,
       approvedBy: isAutoSend ? "SYSTEM_AUTO_SEND" : null,
       approvedAt: isAutoSend ? new Date() : null,
@@ -110,7 +204,7 @@ export async function registerParticipant(
   return {
     success: true,
     registrationId: registration.id,
-    qrToken: registration.qrToken,
+    qrToken: initialStatus === "APPROVED" ? registration.qrToken : null,
     status: initialStatus,
   };
 }
@@ -122,6 +216,8 @@ export async function getEventRegistrations(
     status?: string;
   }
 ) {
+  await requireAdminAuth();
+
   const where: any = { eventId };
 
   if (options?.status && options.status !== "ALL") {
@@ -149,7 +245,13 @@ export async function getEventRegistrations(
   });
 }
 
-export async function approveRegistration(id: string, adminName: string = "Admin") {
+export async function approveRegistration(
+  id: string,
+  adminName: string = "Admin",
+  templateOverride?: { subject?: string; body?: string }
+) {
+  await requireAdminAuth();
+
   const reg = await prisma.registration.findUnique({
     where: { id },
     include: { event: true },
@@ -175,43 +277,70 @@ export async function approveRegistration(id: string, adminName: string = "Admin
     eventLocation: reg.event.location,
     eventStartsAt: reg.event.startsAt,
     qrToken: reg.qrToken,
-    customSubject: reg.event.emailSubject,
-    customBody: reg.event.emailBody,
+    customSubject: templateOverride?.subject || reg.event.emailSubject,
+    customBody: templateOverride?.body || reg.event.emailBody,
   });
 
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/events/${reg.eventId}/registrations`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/checkin`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/doorprize`);
+  revalidatePath(`/ticket/${reg.qrToken}`);
   return { registration: updated, emailResult };
 }
 
-export async function bulkApproveRegistrations(ids: string[], adminName: string = "Admin") {
+export async function bulkApproveRegistrations(
+  ids: string[],
+  adminName: string = "Admin",
+  templateOverride?: { subject?: string; body?: string }
+) {
+  await requireAdminAuth();
+
   for (const id of ids) {
     try {
-      await approveRegistration(id, adminName);
+      await approveRegistration(id, adminName, templateOverride);
     } catch (e) {
       console.error(`Failed to approve ${id}:`, e);
     }
   }
+  revalidatePath("/dashboard");
   return { success: true, count: ids.length };
 }
 
 export async function rejectRegistration(id: string) {
+  await requireAdminAuth();
+
   const reg = await prisma.registration.update({
     where: { id },
     data: { status: "REJECTED" },
   });
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/events/${reg.eventId}/registrations`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/checkin`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/doorprize`);
+  revalidatePath(`/ticket/${reg.qrToken}`);
   return reg;
 }
 
 export async function deleteRegistration(id: string) {
+  await requireAdminAuth();
+
   const reg = await prisma.registration.delete({
     where: { id },
   });
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/events/${reg.eventId}/registrations`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/checkin`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/doorprize`);
   return reg;
 }
 
-export async function resendRsvpEmail(id: string) {
+export async function resendRsvpEmail(
+  id: string,
+  templateOverride?: { subject?: string; body?: string }
+) {
+  await requireAdminAuth();
+
   const reg = await prisma.registration.findUnique({
     where: { id },
     include: { event: true },
@@ -219,7 +348,7 @@ export async function resendRsvpEmail(id: string) {
 
   if (!reg) throw new Error("Peserta tidak ditemukan");
 
-  return await sendRsvpEmail({
+  const res = await sendRsvpEmail({
     registrationId: reg.id,
     recipientEmail: reg.email,
     recipientName: reg.name,
@@ -227,12 +356,17 @@ export async function resendRsvpEmail(id: string) {
     eventLocation: reg.event.location,
     eventStartsAt: reg.event.startsAt,
     qrToken: reg.qrToken,
-    customSubject: reg.event.emailSubject,
-    customBody: reg.event.emailBody,
+    customSubject: templateOverride?.subject || reg.event.emailSubject,
+    customBody: templateOverride?.body || reg.event.emailBody,
   });
+
+  revalidatePath(`/dashboard/events/${reg.eventId}/registrations`);
+  return res;
 }
 
 export async function validateAndCheckIn(eventId: string, qrToken: string) {
+  await requireAdminAuth();
+
   const trimmedToken = qrToken.trim();
   const reg = await prisma.registration.findFirst({
     where: {
@@ -305,7 +439,11 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
     },
   });
 
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/events/${eventId}/checkin`);
+  revalidatePath(`/dashboard/events/${eventId}/registrations`);
+  revalidatePath(`/dashboard/events/${eventId}/doorprize`);
+  revalidatePath(`/ticket/${reg.qrToken}`);
   return {
     success: true,
     code: "SUCCESS",
@@ -315,6 +453,8 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
 }
 
 export async function manualCheckInById(registrationId: string) {
+  await requireAdminAuth();
+
   const reg = await prisma.registration.update({
     where: { id: registrationId },
     data: {
@@ -322,8 +462,11 @@ export async function manualCheckInById(registrationId: string) {
       checkedInAt: new Date(),
     },
   });
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/events/${reg.eventId}/checkin`);
   revalidatePath(`/dashboard/events/${reg.eventId}/registrations`);
+  revalidatePath(`/dashboard/events/${reg.eventId}/doorprize`);
+  revalidatePath(`/ticket/${reg.qrToken}`);
   return reg;
 }
 
@@ -337,6 +480,8 @@ export async function addManualAttendee(
     status?: string;
   }
 ) {
+  await requireAdminAuth();
+
   const reg = await prisma.registration.create({
     data: {
       eventId,
@@ -350,6 +495,9 @@ export async function addManualAttendee(
     },
   });
 
+  revalidatePath("/dashboard");
   revalidatePath(`/dashboard/events/${eventId}/registrations`);
+  revalidatePath(`/dashboard/events/${eventId}/checkin`);
+  revalidatePath(`/dashboard/events/${eventId}/doorprize`);
   return reg;
 }

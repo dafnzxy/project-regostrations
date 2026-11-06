@@ -55,8 +55,25 @@ export function ScannerClient({
   const [searchManual, setSearchManual] = useState("");
   const [manualLoadingId, setManualLoadingId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setAttendees(initialAttendees);
+  }, [initialAttendees]);
+
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const isProcessingRef = useRef(false);
+
+  const formatTimeWib = (dateInput: Date | string | null | undefined) => {
+    if (!dateInput) return "OK";
+    try {
+      return new Intl.DateTimeFormat("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(dateInput));
+    } catch {
+      return "OK";
+    }
+  };
 
   // Audio cues using Web Audio API
   const playSound = (type: "success" | "error") => {
@@ -194,31 +211,33 @@ export function ScannerClient({
     (a.phone && a.phone.includes(searchManual))
   );
 
+  const liveApprovedCount = attendees.length || totalApproved;
+  const liveCheckedInCount = attendees.filter((a) => a.status === "CHECKED_IN").length;
   const attendancePercent =
-    totalApproved > 0 ? Math.round((totalCheckedIn / totalApproved) * 100) : 0;
+    liveApprovedCount > 0 ? Math.round((liveCheckedInCount / liveApprovedCount) * 100) : 0;
 
   return (
     <div className="space-y-8">
       {/* Real-time Attendance Progress Meter */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-5 rounded-2xl glass-card">
-          <div className="text-xs text-slate-400">Total Peserta Disetujui</div>
-          <div className="text-3xl font-extrabold text-white mt-1">{totalApproved}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Memiliki E-Ticket RSVP</div>
+        <div className="p-5 rounded-3xl liquid-card">
+          <div className="text-xs font-bold text-slate-600">Total Peserta Disetujui</div>
+          <div className="text-3xl font-extrabold text-slate-900 mt-1">{liveApprovedCount}</div>
+          <div className="text-[11px] font-medium text-slate-500 mt-0.5">Memiliki E-Ticket RSVP</div>
         </div>
 
-        <div className="p-5 rounded-2xl glass-card">
-          <div className="text-xs text-slate-400">Total Hadir (Checked-In)</div>
-          <div className="text-3xl font-extrabold text-emerald-400 mt-1">{totalCheckedIn}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Sudah melewati meja masuk</div>
+        <div className="p-5 rounded-3xl liquid-card">
+          <div className="text-xs font-bold text-slate-600">Total Hadir (Checked-In)</div>
+          <div className="text-3xl font-extrabold text-[#17449A] mt-1">{liveCheckedInCount}</div>
+          <div className="text-[11px] font-medium text-slate-500 mt-0.5">Sudah melewati meja masuk</div>
         </div>
 
-        <div className="p-5 rounded-2xl glass-card">
-          <div className="text-xs text-slate-400">Tingkat Kehadiran</div>
-          <div className="text-3xl font-extrabold text-indigo-400 mt-1">{attendancePercent}%</div>
-          <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
+        <div className="p-5 rounded-3xl liquid-card">
+          <div className="text-xs font-bold text-slate-600">Tingkat Kehadiran</div>
+          <div className="text-3xl font-extrabold text-slate-900 mt-1">{attendancePercent}%</div>
+          <div className="w-full h-2 bg-slate-200/80 rounded-full mt-2 overflow-hidden p-0.5">
             <div
-              className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+              className="h-full bg-[#17449A] rounded-full transition-all duration-300"
               style={{ width: `${attendancePercent}%` }}
             />
           </div>
@@ -229,38 +248,41 @@ export function ScannerClient({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Camera Viewfinder */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="p-6 rounded-2xl glass-panel border border-slate-800 shadow-xl space-y-4">
+          <div className="p-6 rounded-3xl liquid-glass space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Camera className="w-5 h-5 text-indigo-400" />
-                <h2 className="text-base font-bold text-white">Kamera Scanner QR</h2>
+                <Camera className="w-5 h-5 text-[#17449A]" />
+                <h2 className="text-base font-extrabold text-slate-900">Kamera Scanner QR</h2>
               </div>
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
                   onClick={() => setSoundEnabled(!soundEnabled)}
-                  className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                  className="p-2 rounded-xl liquid-pill text-slate-900 cursor-pointer"
                   title={soundEnabled ? "Matikan Efek Suara" : "Aktifkan Efek Suara"}
                 >
                   {soundEnabled ? (
-                    <Volume2 className="w-4 h-4 text-emerald-400" />
+                    <Volume2 className="w-4 h-4 text-[#17449A]" />
                   ) : (
-                    <VolumeX className="w-4 h-4 text-slate-500" />
+                    <VolumeX className="w-4 h-4 text-slate-400" />
                   )}
                 </button>
 
                 {!isScanning ? (
                   <button
+                    type="button"
                     onClick={startScanner}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition-all"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/25 flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <Camera className="w-3.5 h-3.5" />
                     <span>Nyalakan Kamera</span>
                   </button>
                 ) : (
                   <button
+                    type="button"
                     onClick={stopScanner}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-lg shadow-rose-600/30 flex items-center gap-1.5 transition-all"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 shadow-md shadow-rose-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     <span>Matikan Kamera</span>
                   </button>
@@ -269,19 +291,21 @@ export function ScannerClient({
             </div>
 
             {/* Viewfinder Element */}
-            <div className="relative rounded-2xl overflow-hidden bg-black aspect-square flex flex-col items-center justify-center border border-slate-800">
+            <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square flex flex-col items-center justify-center border border-slate-200">
               <div id="reader" className="w-full h-full" />
               {!isScanning && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-950/90">
-                  <Camera className="w-12 h-12 text-slate-600 mb-3" />
-                  <p className="text-xs text-slate-400 max-w-xs">
-                    Klik tombol <strong>&ldquo;Nyalakan Kamera&rdquo;</strong> di atas untuk memindai tiket QR Code peserta dari kamera HP atau webcam laptop.
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-50/95">
+                  <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3">
+                    <Camera className="w-8 h-8" />
+                  </div>
+                  <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+                    Klik tombol <strong className="text-slate-900">&ldquo;Nyalakan Kamera&rdquo;</strong> di atas untuk memindai tiket QR Code peserta dari kamera HP atau webcam laptop.
                   </p>
                 </div>
               )}
             </div>
 
-            <p className="text-[11px] text-slate-400 text-center">
+            <p className="text-[11px] font-medium text-slate-500 text-center">
               Arahkan QR Code peserta ke dalam kotak pemindai kamera. Sistem akan memverifikasi secara instan.
             </p>
           </div>
@@ -289,64 +313,65 @@ export function ScannerClient({
 
         {/* Right Column: Scan Result Feedback Card */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="p-6 rounded-2xl glass-panel border border-slate-800 shadow-xl min-h-[360px] flex flex-col justify-center">
+          <div className="p-6 rounded-3xl liquid-glass min-h-[360px] flex flex-col justify-center">
             {scanResult ? (
               <div className="animate-fade-in space-y-4">
                 {scanResult.success ? (
-                  <div className="p-6 rounded-2xl bg-emerald-950/50 border border-emerald-500/40 text-center space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mx-auto">
+                  <div className="p-6 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-xs">
                       <CheckCircle2 className="w-8 h-8" />
                     </div>
-                    <div className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300">
+                    <div className="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-600 text-white">
                       CHECK-IN BERHASIL
                     </div>
-                    <h3 className="text-2xl font-black text-white">
+                    <h3 className="text-2xl font-black text-slate-900">
                       {scanResult.registration?.name}
                     </h3>
-                    <p className="text-xs text-slate-300">{scanResult.registration?.email}</p>
-                    <div className="pt-2 text-[11px] text-emerald-400 font-mono">
-                      Waktu Check-In: {new Date().toLocaleTimeString("id-ID")}
+                    <p className="text-xs text-slate-600">{scanResult.registration?.email}</p>
+                    <div className="pt-2 text-[11px] font-bold text-emerald-700 font-mono">
+                      Waktu Check-In: {formatTimeWib(new Date())} WIB
                     </div>
                   </div>
                 ) : scanResult.code === "ALREADY_CHECKED_IN" ? (
-                  <div className="p-6 rounded-2xl bg-amber-950/50 border border-amber-500/40 text-center space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+                  <div className="p-6 rounded-2xl bg-amber-50/90 border border-amber-200 text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-amber-200 flex items-center justify-center text-amber-600 mx-auto shadow-xs">
                       <Clock className="w-8 h-8" />
                     </div>
-                    <div className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300">
+                    <div className="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-amber-500 text-white">
                       SUDAH CHECK-IN SEBELUMNYA
                     </div>
-                    <h3 className="text-xl font-bold text-white">
+                    <h3 className="text-xl font-extrabold text-slate-900">
                       {scanResult.registration?.name}
                     </h3>
-                    <p className="text-xs text-slate-300 leading-relaxed">{scanResult.message}</p>
+                    <p className="text-xs text-slate-700 leading-relaxed">{scanResult.message}</p>
                   </div>
                 ) : (
-                  <div className="p-6 rounded-2xl bg-rose-950/50 border border-rose-500/40 text-center space-y-3">
-                    <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+                  <div className="p-6 rounded-2xl bg-rose-50/90 border border-rose-200 text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-rose-200 flex items-center justify-center text-rose-600 mx-auto shadow-xs">
                       <AlertCircle className="w-8 h-8" />
                     </div>
-                    <div className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-300">
+                    <div className="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-rose-600 text-white">
                       TIKET TIDAK VALID
                     </div>
-                    <p className="text-xs text-rose-200 leading-relaxed">{scanResult.message}</p>
+                    <p className="text-xs text-rose-700 font-medium leading-relaxed">{scanResult.message}</p>
                   </div>
                 )}
 
                 <button
+                  type="button"
                   onClick={() => setScanResult(null)}
-                  className="w-full py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300"
+                  className="w-full py-2.5 rounded-xl liquid-pill text-xs font-bold text-slate-700 cursor-pointer"
                 >
                   Reset / Siap Scan Peserta Berikutnya
                 </button>
               </div>
             ) : (
               <div className="text-center p-8 space-y-3">
-                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 mx-auto">
-                  <RefreshCw className="w-8 h-8 opacity-60 animate-spin-slow" />
+                <div className="w-16 h-16 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mx-auto">
+                  <RefreshCw className="w-8 h-8 opacity-75" />
                 </div>
-                <h3 className="text-base font-bold text-white">Menunggu Pemindaian QR</h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+                <h3 className="text-base font-extrabold text-slate-900">Menunggu Pemindaian QR</h3>
+                <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
                   Hasil verifikasi identitas, status persetujuan, dan jam check-in peserta akan langsung tampil di sini dalam &lt; 1 detik.
                 </p>
               </div>
@@ -356,11 +381,11 @@ export function ScannerClient({
       </div>
 
       {/* Manual Search & Check-in Table (PRD Section 4.6 Fallback) */}
-      <div className="space-y-4 pt-6 border-t border-slate-800">
+      <div className="space-y-4 pt-6 border-t border-slate-200/80">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-white">Pencarian & Check-In Manual</h3>
-            <p className="text-xs text-slate-400">
+            <h3 className="text-base font-extrabold text-slate-900">Pencarian & Check-In Manual</h3>
+            <p className="text-xs text-slate-600">
               Gunakan jika layar ponsel peserta bermasalah, kamera tidak tersedia, atau sinyal drop.
             </p>
           </div>
@@ -372,22 +397,22 @@ export function ScannerClient({
               value={searchManual}
               onChange={(e) => setSearchManual(e.target.value)}
               placeholder="Ketik nama / email peserta..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+              className="w-full pl-9 pr-4 py-2 rounded-xl liquid-input text-slate-900 placeholder-slate-400 text-xs"
             />
           </div>
         </div>
 
-        <div className="rounded-2xl glass-panel border border-slate-800/80 overflow-hidden shadow-xl max-h-96 overflow-y-auto">
+        <div className="rounded-3xl liquid-glass overflow-hidden max-h-96 overflow-y-auto">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className="sticky top-0 bg-slate-900/95 border-b border-slate-800 text-slate-400 z-10">
+            <thead className="sticky top-0 bg-slate-100/95 border-b border-slate-200 text-slate-700 z-10">
               <tr>
-                <th className="p-3 font-semibold text-slate-300">Nama Lengkap</th>
-                <th className="p-3 font-semibold text-slate-300">Email</th>
-                <th className="p-3 font-semibold text-slate-300">Status</th>
-                <th className="p-3 font-semibold text-slate-300 text-right">Aksi</th>
+                <th className="p-3.5 font-bold">Nama Lengkap</th>
+                <th className="p-3.5 font-bold">Email</th>
+                <th className="p-3.5 font-bold">Status</th>
+                <th className="p-3.5 font-bold text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-200/70">
               {filteredAttendees.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="p-6 text-center text-slate-500">
@@ -396,37 +421,33 @@ export function ScannerClient({
                 </tr>
               ) : (
                 filteredAttendees.map((att) => (
-                  <tr key={att.id} className="hover:bg-slate-900/50">
-                    <td className="p-3 font-medium text-white">{att.name}</td>
-                    <td className="p-3 text-slate-400">{att.email}</td>
-                    <td className="p-3">
+                  <tr key={att.id} className="hover:bg-white/80">
+                    <td className="p-3.5 font-bold text-slate-900">{att.name}</td>
+                    <td className="p-3.5 text-slate-600">{att.email}</td>
+                    <td className="p-3.5">
                       {att.status === "CHECKED_IN" ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
                           <CheckCircle2 className="w-3.5 h-3.5" /> Sudah Hadir
                         </span>
                       ) : att.status === "APPROVED" ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-300">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500">
                           Belum Hadir
                         </span>
                       ) : (
-                        <span className="text-[11px] text-amber-400">{att.status}</span>
+                        <span className="text-[11px] font-bold text-amber-600">{att.status}</span>
                       )}
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="p-3.5 text-right">
                       {att.status === "CHECKED_IN" ? (
-                        <span className="text-[11px] text-slate-400 font-mono">
-                          {att.checkedInAt
-                            ? new Date(att.checkedInAt).toLocaleTimeString("id-ID", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "OK"}
+                        <span className="text-[11px] text-slate-500 font-mono font-semibold">
+                          {formatTimeWib(att.checkedInAt)}
                         </span>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => handleManualCheckInClick(att.id)}
                           disabled={manualLoadingId === att.id}
-                          className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition-colors disabled:opacity-50"
+                          className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold transition-colors disabled:opacity-50 cursor-pointer"
                         >
                           {manualLoadingId === att.id ? "Memproses..." : "Tandai Hadir"}
                         </button>

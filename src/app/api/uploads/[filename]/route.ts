@@ -8,7 +8,6 @@ const MIME_MAP: Record<string, string> = {
   ".png": "image/png",
   ".webp": "image/webp",
   ".gif": "image/gif",
-  ".svg": "image/svg+xml",
 };
 
 interface RouteParams {
@@ -22,6 +21,11 @@ export async function GET(
   try {
     const { filename } = await context.params;
     const sanitizedFilename = path.basename(filename);
+
+    if (!/^[a-zA-Z0-9._-]+$/.test(sanitizedFilename)) {
+      return new NextResponse("Nama file tidak valid", { status: 400 });
+    }
+
     const filePath = path.join(process.cwd(), "public", "uploads", sanitizedFilename);
 
     if (!fs.existsSync(filePath)) {
@@ -30,11 +34,16 @@ export async function GET(
 
     const buffer = await fs.promises.readFile(filePath);
     const ext = path.extname(sanitizedFilename).toLowerCase();
-    const contentType = MIME_MAP[ext] || "application/octet-stream";
+    const contentType = MIME_MAP[ext];
+    if (!contentType) {
+      return new NextResponse("Tipe file tidak diizinkan", { status: 403 });
+    }
 
     return new Response(buffer, {
       headers: {
         "Content-Type": contentType,
+        "X-Content-Type-Options": "nosniff",
+        "Content-Security-Policy": "default-src 'none'; img-src 'self'; sandbox",
         "Cache-Control": "public, max-age=31536000, immutable",
       },
     });

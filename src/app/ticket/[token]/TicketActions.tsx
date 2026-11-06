@@ -24,16 +24,18 @@ export function TicketActions({ qrDataUrl, name }: TicketActionsProps) {
   return (
     <>
       <button
+        type="button"
         onClick={handlePrint}
-        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl liquid-pill text-slate-800 text-xs font-bold cursor-pointer"
       >
-        <Printer className="w-4 h-4 text-slate-400" />
+        <Printer className="w-4 h-4 text-indigo-600" />
         <span>Cetak Tiket</span>
       </button>
 
       <button
+        type="button"
         onClick={handleDownload}
-        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-lg shadow-indigo-600/25 transition-all"
+        className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 transition-all cursor-pointer"
       >
         <Download className="w-4 h-4" />
         <span>Unduh QR Image</span>

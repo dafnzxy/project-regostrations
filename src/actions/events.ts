@@ -2,8 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { requireAdminAuth } from "./auth";
+import { EMAIL_TEMPLATE_PRESETS } from "@/lib/email-templates";
 
 export async function getEvents() {
+  await requireAdminAuth();
+
   return await prisma.event.findMany({
     orderBy: { createdAt: "desc" },
     include: {
@@ -20,7 +24,20 @@ export async function getEvents() {
 export async function getEventBySlug(slug: string) {
   return await prisma.event.findUnique({
     where: { slug },
-    include: {
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      description: true,
+      location: true,
+      startsAt: true,
+      endsAt: true,
+      registrationDeadline: true,
+      quota: true,
+      status: true,
+      posterUrl: true,
+      formSchema: true,
+      rsvpMode: true,
       _count: {
         select: {
           registrations: true,
@@ -31,6 +48,8 @@ export async function getEventBySlug(slug: string) {
 }
 
 export async function getEventById(id: string) {
+  await requireAdminAuth();
+
   return await prisma.event.findUnique({
     where: { id },
     include: {
@@ -61,6 +80,8 @@ export async function createEvent(data: {
   rsvpMode: string;
   formSchema?: string;
 }) {
+  await requireAdminAuth();
+
   const existing = await prisma.event.findUnique({
     where: { slug: data.slug },
   });
@@ -94,8 +115,8 @@ export async function createEvent(data: {
       posterUrl: data.posterUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80",
       rsvpMode: data.rsvpMode || "MANUAL",
       formSchema: data.formSchema || defaultSchema,
-      emailSubject: `E-Ticket & QR Code: ${data.title}`,
-      emailBody: `Halo {{name}},\n\nPendaftaran Anda untuk ${data.title} telah disetujui.\nTunjukkan QR Code terlampir untuk check-in.`,
+      emailSubject: EMAIL_TEMPLATE_PRESETS[0].subject,
+      emailBody: EMAIL_TEMPLATE_PRESETS[0].body,
     },
   });
 
@@ -120,6 +141,8 @@ export async function updateEvent(
     emailBody?: string;
   }
 ) {
+  await requireAdminAuth();
+
   const updatePayload: any = {};
   if (data.title !== undefined) updatePayload.title = data.title;
   if (data.description !== undefined) updatePayload.description = data.description;
@@ -140,12 +163,15 @@ export async function updateEvent(
   });
 
   revalidatePath(`/dashboard/events/${id}`);
+  revalidatePath(`/dashboard/events/${id}/registrations`);
   revalidatePath(`/dashboard/events/${id}/form-builder`);
   revalidatePath(`/e/${updated.slug}`);
   return updated;
 }
 
 export async function duplicateEvent(id: string) {
+  await requireAdminAuth();
+
   const source = await prisma.event.findUnique({
     where: { id },
     include: { prizes: true },
@@ -187,4 +213,15 @@ export async function duplicateEvent(id: string) {
 
   revalidatePath("/dashboard");
   return duplicated;
+}
+
+export async function deleteEvent(id: string) {
+  await requireAdminAuth();
+
+  const deleted = await prisma.event.delete({
+    where: { id },
+  });
+
+  revalidatePath("/dashboard");
+  return deleted;
 }

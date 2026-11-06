@@ -77,6 +77,25 @@ export function SpinWheelClient({
   const [poolType, setPoolType] = useState<"CHECKED_IN" | "APPROVED">("CHECKED_IN");
   const [excludePrevious, setExcludePrevious] = useState(true);
 
+  useEffect(() => {
+    setPrizes(initialPrizes);
+    if (!selectedPrizeId && initialPrizes[0]?.id) {
+      setSelectedPrizeId(initialPrizes[0].id);
+    }
+  }, [initialPrizes, selectedPrizeId]);
+
+  const formatTimeWib = (dateInput: Date | string) => {
+    try {
+      return new Intl.DateTimeFormat("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: "Asia/Jakarta",
+      }).format(new Date(dateInput));
+    } catch {
+      return "-";
+    }
+  };
+
   // Participant pool
   const [participants, setParticipants] = useState<
     { id: string; name: string; email: string }[]
@@ -191,13 +210,13 @@ export function SpinWheelClient({
       ctx.save();
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-      ctx.fillStyle = "#1e293b";
+      ctx.fillStyle = "#f1f5f9";
       ctx.fill();
       ctx.lineWidth = 4;
-      ctx.strokeStyle = "#475569";
+      ctx.strokeStyle = "#cbd5e1";
       ctx.stroke();
 
-      ctx.fillStyle = "#94a3b8";
+      ctx.fillStyle = "#64748b";
       ctx.font = "bold 15px sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
@@ -439,63 +458,84 @@ export function SpinWheelClient({
   };
 
   return (
-    <div ref={containerRef} className="space-y-8 bg-slate-950 p-2 sm:p-4 rounded-3xl">
+    <div ref={containerRef} className="space-y-6 sm:space-y-8 bg-white/60 p-1 sm:p-4 rounded-3xl">
       {/* Top Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl glass-card">
-        <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-4 sm:p-5 rounded-3xl liquid-card">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3">
           {/* Select Prize */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <div className="w-full sm:w-auto">
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
               Pilih Hadiah yang Diundi
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={selectedPrizeId}
                 onChange={(e) => setSelectedPrizeId(e.target.value)}
                 disabled={isSpinning}
-                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 sm:flex-initial px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs font-bold min-w-0"
               >
-                {prizes.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.quantity} unit)
-                  </option>
-                ))}
+                {prizes.length === 0 && (
+                  <option value="">-- Belum Ada Hadiah --</option>
+                )}
+                {prizes.map((p) => {
+                  const usedCount = p.prizeDraws?.length || 0;
+                  const remaining = Math.max(0, p.quantity - usedCount);
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.name} (Sisa {remaining}/{p.quantity} unit)
+                    </option>
+                  );
+                })}
               </select>
 
               <button
+                type="button"
                 onClick={() => setShowAddPrize(true)}
                 disabled={isSpinning}
-                className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+                className="px-3 py-2 rounded-xl liquid-pill text-[#17449A] text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0"
                 title="Tambah Kategori Hadiah"
               >
-                <Plus className="w-4 h-4 text-emerald-400" />
+                <Plus className="w-4 h-4 text-[#17449A]" />
+                <span>Tambah Hadiah</span>
               </button>
+
+              {selectedPrizeId && (
+                <button
+                  type="button"
+                  onClick={() => handleDeletePrize(selectedPrizeId)}
+                  disabled={isSpinning}
+                  className="p-2 rounded-xl liquid-pill text-slate-700 hover:text-rose-600 transition-colors cursor-pointer shrink-0"
+                  title="Hapus Kategori Hadiah Ini"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
           {/* Pool Settings */}
-          <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+          <div className="w-full sm:w-auto">
+            <label className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-1">
               Sumber Peserta (Pool)
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <select
                 value={poolType}
                 onChange={(e) => setPoolType(e.target.value as any)}
                 disabled={isSpinning}
-                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 sm:flex-initial px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs font-bold min-w-0"
               >
                 <option value="CHECKED_IN">Hanya yang Sudah Hadir (Checked-In)</option>
                 <option value="APPROVED">Semua Peserta Terdaftar (Approved)</option>
               </select>
 
-              <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 cursor-pointer">
+              <label className="flex items-center gap-1.5 px-3 py-2 rounded-xl liquid-pill text-xs font-bold text-slate-700 cursor-pointer shrink-0">
                 <input
                   type="checkbox"
                   checked={excludePrevious}
                   onChange={(e) => setExcludePrevious(e.target.checked)}
                   disabled={isSpinning}
-                  className="accent-indigo-600 rounded"
+                  className="accent-[#17449A] rounded"
                 />
                 <span>Cegah Menang Ganda</span>
               </label>
@@ -504,32 +544,34 @@ export function SpinWheelClient({
         </div>
 
         {/* Presentation Screen Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-end gap-2 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-200/60">
           <button
+            type="button"
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors"
+            className="p-2.5 rounded-xl liquid-pill text-slate-900 cursor-pointer"
             title={soundEnabled ? "Matikan Efek Suara" : "Aktifkan Efek Suara"}
           >
             {soundEnabled ? (
-              <Volume2 className="w-4 h-4 text-emerald-400" />
+              <Volume2 className="w-4 h-4 text-[#17449A]" />
             ) : (
-              <VolumeX className="w-4 h-4 text-slate-500" />
+              <VolumeX className="w-4 h-4 text-slate-400" />
             )}
           </button>
 
           <button
+            type="button"
             onClick={toggleFullscreen}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+            className="flex-1 sm:flex-initial px-3.5 py-2 rounded-xl liquid-pill text-slate-900 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
             title="Layar Penuh Proyektor"
           >
             {isFullscreen ? (
               <>
-                <Minimize2 className="w-4 h-4" />
+                <Minimize2 className="w-4 h-4 text-slate-900" />
                 <span>Keluar Layar Penuh</span>
               </>
             ) : (
               <>
-                <Maximize2 className="w-4 h-4 text-indigo-400" />
+                <Maximize2 className="w-4 h-4 text-[#17449A]" />
                 <span>Mode Proyektor Panggung</span>
               </>
             )}
@@ -538,20 +580,20 @@ export function SpinWheelClient({
       </div>
 
       {/* Spin Wheel Stage Area */}
-      <div className="relative flex flex-col items-center justify-center p-6 sm:p-10 rounded-3xl glass-panel border border-indigo-500/20 overflow-hidden shadow-2xl">
+      <div className="relative flex flex-col items-center justify-center p-4 sm:p-8 md:p-10 rounded-3xl liquid-glass overflow-hidden">
         {/* Glow ambient background */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-600/15 blur-[120px] rounded-full pointer-events-none -z-10" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 sm:w-96 h-72 sm:h-96 bg-[#17449A]/10 blur-[120px] rounded-full pointer-events-none -z-10" />
 
         {/* Selected Prize Banner */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/20 text-pink-300 text-xs font-semibold mb-2">
-            <Trophy className="w-4 h-4 text-pink-400" />
+        <div className="text-center mb-5 sm:mb-6">
+          <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#17449A]/10 border border-[#17449A]/20 text-[#17449A] text-xs font-bold mb-2">
+            <Trophy className="w-4 h-4 text-[#17449A]" />
             <span>Sedang Mengundi:</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            {prizes.find((p) => p.id === selectedPrizeId)?.name || "Pilih Hadiah"}
+          <h2 className="text-xl sm:text-3xl font-black text-slate-900 tracking-tight px-2">
+            {prizes.find((p) => p.id === selectedPrizeId)?.name || "Pilih / Tambah Hadiah"}
           </h2>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs font-medium text-slate-600 mt-1">
             Total {participants.length} peserta berpartisipasi di dalam roda undian
           </p>
         </div>
@@ -562,18 +604,19 @@ export function SpinWheelClient({
             ref={canvasRef}
             width={480}
             height={480}
-            className="w-[320px] h-[320px] sm:w-[480px] sm:h-[480px] rounded-full shadow-2xl border-4 border-slate-800"
+            className="w-[260px] h-[260px] sm:w-[380px] sm:h-[380px] md:w-[460px] md:h-[460px] rounded-full shadow-2xl border-4 border-white"
           />
         </div>
 
         {/* Big Spin Action Button */}
-        <div className="mt-8">
+        <div className="mt-6 sm:mt-8 w-full sm:w-auto flex justify-center">
           <button
+            type="button"
             onClick={handleSpin}
-            disabled={isSpinning || participants.length === 0}
-            className="px-8 py-4 rounded-2xl font-black text-base sm:text-lg text-white bg-gradient-to-r from-pink-600 via-indigo-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 active:scale-95 disabled:opacity-40 shadow-2xl shadow-indigo-600/50 hover:shadow-indigo-600/70 transition-all cursor-pointer flex items-center gap-3"
+            disabled={isSpinning || participants.length === 0 || !selectedPrizeId}
+            className="w-full sm:w-auto justify-center px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-black text-sm sm:text-lg text-white bg-[#17449A] hover:bg-[#12367B] active:scale-95 disabled:opacity-40 shadow-2xl shadow-[#17449A]/35 transition-all cursor-pointer flex items-center gap-2.5"
           >
-            <Sparkles className="w-6 h-6 animate-pulse" />
+            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse shrink-0" />
             <span>{isSpinning ? "Memutar Roda Doorprize..." : "PUTAR SPIN WHEEL!"}</span>
           </button>
         </div>
@@ -581,41 +624,43 @@ export function SpinWheelClient({
 
       {/* Winner Congratulations Modal */}
       {currentWinner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-          <div className="max-w-lg w-full glass-panel rounded-3xl p-8 border border-pink-500/40 text-center space-y-6 shadow-2xl shadow-pink-500/20">
-            <div className="w-20 h-20 rounded-3xl bg-pink-500/20 border border-pink-500/40 flex items-center justify-center text-pink-400 mx-auto shadow-xl shadow-pink-500/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-md animate-fade-in">
+          <div className="max-w-lg w-full liquid-glass rounded-3xl p-8 text-center space-y-6">
+            <div className="w-20 h-20 rounded-3xl bg-pink-50 border border-pink-200 flex items-center justify-center text-pink-600 mx-auto shadow-lg shadow-pink-500/15">
               <Trophy className="w-10 h-10 animate-bounce" />
             </div>
 
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-pink-400 bg-pink-500/10 px-3 py-1 rounded-full border border-pink-500/20">
+              <span className="text-xs font-extrabold uppercase tracking-wider text-pink-700 bg-pink-50 px-3 py-1 rounded-full border border-pink-200">
                 SELAMAT KEPADA PEMENANG!
               </span>
-              <h3 className="text-3xl font-extrabold text-white mt-3">
+              <h3 className="text-3xl font-black text-slate-900 mt-3">
                 {currentWinner.winnerName}
               </h3>
-              <p className="text-sm text-slate-300 mt-1">{currentWinner.winnerEmail}</p>
+              <p className="text-sm text-slate-600 mt-1">{currentWinner.winnerEmail}</p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 text-center">
-              <div className="text-xs text-indigo-300 font-medium">Memenangkan Hadiah:</div>
-              <div className="text-xl font-bold text-white mt-0.5">
+            <div className="p-4 rounded-2xl bg-indigo-50/90 border border-indigo-200 text-center">
+              <div className="text-xs text-indigo-700 font-bold">Memenangkan Hadiah:</div>
+              <div className="text-xl font-black text-slate-900 mt-0.5">
                 {currentWinner.prizeName}
               </div>
             </div>
 
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <button
+                type="button"
                 onClick={() => handleRedraw(currentWinner.drawId)}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-300 hover:text-white bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/30 transition-colors flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Undi Ulang (Jika Tidak Hadir)</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setCurrentWinner(null)}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/30 transition-all"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/25 transition-all cursor-pointer"
               >
                 Selesai / Lanjut Undian Berikutnya
               </button>
@@ -626,14 +671,14 @@ export function SpinWheelClient({
 
       {/* Add Prize Modal */}
       {showAddPrize && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="max-w-md w-full glass-panel rounded-2xl p-6 border border-slate-700 space-y-4">
-            <h3 className="text-base font-bold text-white">Tambah Kategori Hadiah</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/45 backdrop-blur-md animate-fade-in">
+          <div className="max-w-md w-full liquid-glass rounded-3xl p-6 space-y-4">
+            <h3 className="text-base font-extrabold text-slate-900">Tambah Kategori Hadiah</h3>
 
             <form onSubmit={handleAddPrize} className="space-y-4 pt-1">
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Nama Hadiah <span className="text-rose-400">*</span>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Nama Hadiah <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -641,13 +686,13 @@ export function SpinWheelClient({
                   value={newPrizeName}
                   onChange={(e) => setNewPrizeName(e.target.value)}
                   placeholder="Contoh: iPad Air Gen 6"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Jumlah Kuota Pemenang <span className="text-rose-400">*</span>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Jumlah Kuota Pemenang <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -655,7 +700,7 @@ export function SpinWheelClient({
                   required
                   value={newPrizeQty}
                   onChange={(e) => setNewPrizeQty(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                 />
               </div>
 
@@ -663,13 +708,13 @@ export function SpinWheelClient({
                 <button
                   type="button"
                   onClick={() => setShowAddPrize(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-slate-800"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-700 liquid-pill cursor-pointer"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 cursor-pointer"
                 >
                   Simpan Hadiah
                 </button>
@@ -680,41 +725,43 @@ export function SpinWheelClient({
       )}
 
       {/* History of Winners Table (PRD Section 4.7) */}
-      <div className="space-y-4 pt-6 border-t border-slate-800">
+      <div className="space-y-4 pt-6 border-t border-slate-200/80">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-bold text-white flex items-center gap-2">
-              <Trophy className="w-4 h-4 text-pink-400" />
+            <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-pink-600" />
               <span>Riwayat Pemenang Doorprize</span>
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-600">
               Daftar seluruh pemenang yang telah diundi beserta opsi undi ulang jika pemenang berhalangan hadir.
             </p>
           </div>
 
           <button
+            type="button"
             onClick={exportWinnersToCsv}
             disabled={initialWinners.length === 0}
-            className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 flex items-center gap-1.5 transition-all w-fit disabled:opacity-50"
+            className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill flex items-center gap-1.5 w-fit disabled:opacity-50 cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 text-indigo-600" />
             <span>Export Rekap Pemenang (CSV)</span>
           </button>
         </div>
 
-        <div className="rounded-2xl glass-panel border border-slate-800/80 overflow-hidden shadow-xl">
-          <table className="w-full text-left text-xs border-collapse">
+        <div className="rounded-3xl liquid-glass overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse min-w-[540px]">
             <thead>
-              <tr className="bg-slate-900/90 border-b border-slate-800 text-slate-400 select-none">
-                <th className="p-3.5 font-semibold text-slate-300">Hadiah</th>
-                <th className="p-3.5 font-semibold text-slate-300">Nama Pemenang</th>
-                <th className="p-3.5 font-semibold text-slate-300">Email</th>
-                <th className="p-3.5 font-semibold text-slate-300">Waktu Diundi</th>
-                <th className="p-3.5 font-semibold text-slate-300">Status</th>
-                <th className="p-3.5 font-semibold text-slate-300 text-right">Aksi</th>
+              <tr className="bg-slate-100/80 border-b border-slate-200/80 text-slate-700 select-none">
+                <th className="p-3.5 font-bold">Hadiah</th>
+                <th className="p-3.5 font-bold">Nama Pemenang</th>
+                <th className="p-3.5 font-bold">Email</th>
+                <th className="p-3.5 font-bold">Waktu Diundi</th>
+                <th className="p-3.5 font-bold">Status</th>
+                <th className="p-3.5 font-bold text-right">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-200/70">
               {initialWinners.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="p-8 text-center text-slate-500">
@@ -723,30 +770,28 @@ export function SpinWheelClient({
                 </tr>
               ) : (
                 initialWinners.map((w) => (
-                  <tr key={w.id} className="hover:bg-slate-900/50">
-                    <td className="p-3.5 font-semibold text-white">{w.prize.name}</td>
-                    <td className="p-3.5 text-indigo-300 font-medium">{w.registration.name}</td>
-                    <td className="p-3.5 text-slate-400">{w.registration.email}</td>
-                    <td className="p-3.5 text-slate-400 font-mono">
-                      {new Date(w.drawnAt).toLocaleTimeString("id-ID", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                  <tr key={w.id} className="hover:bg-white/80">
+                    <td className="p-3.5 font-bold text-slate-900">{w.prize.name}</td>
+                    <td className="p-3.5 text-indigo-700 font-bold">{w.registration.name}</td>
+                    <td className="p-3.5 text-slate-600">{w.registration.email}</td>
+                    <td className="p-3.5 text-slate-500 font-mono">
+                      {formatTimeWib(w.drawnAt)}
                     </td>
                     <td className="p-3.5">
                       {w.status === "VALID" ? (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600">
                           Sah (Pemenang)
                         </span>
                       ) : (
-                        <span className="text-[11px] text-rose-400">Diundi Ulang</span>
+                        <span className="text-[11px] font-bold text-rose-600">Diundi Ulang</span>
                       )}
                     </td>
                     <td className="p-3.5 text-right">
                       {w.status === "VALID" && (
                         <button
+                          type="button"
                           onClick={() => handleRedraw(w.id)}
-                          className="px-2.5 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-[11px] font-medium transition-colors"
+                          className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 text-[11px] font-bold transition-colors cursor-pointer"
                         >
                           Undi Ulang
                         </button>
@@ -757,6 +802,7 @@ export function SpinWheelClient({
               )}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

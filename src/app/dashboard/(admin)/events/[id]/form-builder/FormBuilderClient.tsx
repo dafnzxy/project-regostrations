@@ -121,25 +121,27 @@ export function FormBuilderClient({
       <div className="lg:col-span-7 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-white">Editor Field Formulir</h2>
-            <p className="text-xs text-slate-400">
+            <h2 className="text-lg font-extrabold text-slate-900">Editor Field Formulir</h2>
+            <p className="text-xs text-slate-600">
               Sesuaikan data apa saja yang perlu diisi peserta saat mendaftar event.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={handleAddField}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-900 liquid-pill cursor-pointer"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-[#17449A]" />
               <span>Tambah Field</span>
             </button>
 
             <button
+              type="button"
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 shadow-md shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/20 transition-all cursor-pointer disabled:opacity-50"
             >
               {saving ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -154,41 +156,41 @@ export function FormBuilderClient({
         </div>
 
         {saveSuccess && (
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2 animate-fade-in">
-            <Check className="w-4 h-4" />
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2 animate-fade-in">
+            <Check className="w-4 h-4 text-emerald-600" />
             <span>Formulir berhasil disimpan dan aktif di halaman pendaftaran publik!</span>
           </div>
         )}
 
         {saveError && (
-          <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600" />
             <span>{saveError}</span>
           </div>
         )}
 
         {/* Locked Core Fields (Nama & Email) */}
-        <div className="p-4 rounded-xl glass-card border border-slate-800 space-y-3 bg-slate-900/40">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
+        <div className="p-5 rounded-3xl liquid-card space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+            <Lock className="w-3.5 h-3.5 text-[#17449A]" />
             <span>Field Bawaan Sistem (Wajib, Tidak Dapat Dihapus)</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-200/80 flex items-center justify-between shadow-2xs">
               <div>
-                <div className="font-semibold text-white">Nama Lengkap</div>
-                <div className="text-[11px] text-slate-400">Tipe: Teks Pendek</div>
+                <div className="font-bold text-slate-900">Nama Lengkap</div>
+                <div className="text-[11px] text-slate-500">Tipe: Teks Pendek</div>
               </div>
-              <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">
+              <span className="text-[10px] font-bold bg-[#17449A]/10 text-[#17449A] border border-[#17449A]/20 px-2 py-0.5 rounded-full font-mono">
                 REQUIRED
               </span>
             </div>
-            <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between">
+            <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-200/80 flex items-center justify-between shadow-2xs">
               <div>
-                <div className="font-semibold text-white">Alamat Email</div>
-                <div className="text-[11px] text-slate-400">Tipe: Email (Unik)</div>
+                <div className="font-bold text-slate-900">Alamat Email</div>
+                <div className="text-[11px] text-slate-500">Tipe: Email (Unik)</div>
               </div>
-              <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded font-mono">
+              <span className="text-[10px] font-bold bg-[#17449A]/10 text-[#17449A] border border-[#17449A]/20 px-2 py-0.5 rounded-full font-mono">
                 REQUIRED
               </span>
             </div>
@@ -204,19 +206,19 @@ export function FormBuilderClient({
             return (
               <div
                 key={field.id}
-                className="p-5 rounded-2xl glass-panel border border-slate-800/90 hover:border-slate-700 transition-all space-y-4"
+                className="p-5 rounded-3xl liquid-glass space-y-4"
               >
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
+                  <span className="text-xs font-extrabold text-[#17449A] uppercase tracking-wider">
                     Field #{index + 1}
                   </span>
 
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       disabled={index === 0}
                       onClick={() => handleMoveField(index, "up")}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] disabled:opacity-30 cursor-pointer"
                       title="Geser ke Atas"
                     >
                       <ArrowUp className="w-3.5 h-3.5" />
@@ -225,7 +227,7 @@ export function FormBuilderClient({
                       type="button"
                       disabled={index === fields.length - 1}
                       onClick={() => handleMoveField(index, "down")}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white disabled:opacity-30 transition-colors"
+                      className="p-1.5 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] disabled:opacity-30 cursor-pointer"
                       title="Geser ke Bawah"
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
@@ -233,7 +235,7 @@ export function FormBuilderClient({
                     <button
                       type="button"
                       onClick={() => handleDeleteField(index)}
-                      className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition-colors"
+                      className="p-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 transition-colors cursor-pointer"
                       title="Hapus Field Ini"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -243,19 +245,19 @@ export function FormBuilderClient({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Label Pertanyaan
                     </label>
                     <input
                       type="text"
                       value={field.label}
                       onChange={(e) => handleUpdateField(index, { label: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Tipe Input
                     </label>
                     <select
@@ -263,7 +265,7 @@ export function FormBuilderClient({
                       onChange={(e) =>
                         handleUpdateField(index, { type: e.target.value as FieldType })
                       }
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                     >
                       {fieldTypes.map((t) => (
                         <option key={t.value} value={t.value}>
@@ -274,7 +276,7 @@ export function FormBuilderClient({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
                       Placeholder (Contoh Teks)
                     </label>
                     <input
@@ -282,7 +284,7 @@ export function FormBuilderClient({
                       value={field.placeholder || ""}
                       onChange={(e) => handleUpdateField(index, { placeholder: e.target.value })}
                       placeholder="Contoh: PT ABC..."
-                      className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 placeholder-slate-400 text-xs"
                     />
                   </div>
 
@@ -294,7 +296,7 @@ export function FormBuilderClient({
                         onChange={(e) => handleUpdateField(index, { required: e.target.checked })}
                         className="accent-indigo-600 w-4 h-4 rounded"
                       />
-                      <span className="text-xs font-medium text-slate-300">
+                      <span className="text-xs font-bold text-slate-700">
                         Wajib Diisi (Required)
                       </span>
                     </label>
@@ -303,15 +305,15 @@ export function FormBuilderClient({
 
                 {/* Options Editor for Dropdown / Radio / Checkbox */}
                 {hasOptions && (
-                  <div className="pt-3 border-t border-slate-800 space-y-2">
+                  <div className="pt-3 border-t border-slate-200/80 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-slate-400">
+                      <span className="text-[11px] font-bold text-slate-600">
                         Daftar Opsi Pilihan
                       </span>
                       <button
                         type="button"
                         onClick={() => handleAddOption(index)}
-                        className="text-[11px] text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-500 flex items-center gap-1 cursor-pointer"
                       >
                         <Plus className="w-3 h-3" /> Tambah Pilihan
                       </button>
@@ -324,12 +326,12 @@ export function FormBuilderClient({
                             type="text"
                             value={opt}
                             onChange={(e) => handleUpdateOption(index, optIdx, e.target.value)}
-                            className="flex-1 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-white text-xs focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                            className="flex-1 px-3 py-1.5 rounded-xl liquid-input text-slate-900 text-xs"
                           />
                           <button
                             type="button"
                             onClick={() => handleDeleteOption(index, optIdx)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -346,47 +348,49 @@ export function FormBuilderClient({
 
       {/* Right Column: Real-Time Live Preview */}
       <div className="lg:col-span-5 sticky top-24">
-        <div className="p-6 rounded-2xl glass-card border border-indigo-500/20 shadow-xl space-y-5">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="p-6 rounded-3xl liquid-glass space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
             <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-indigo-400" />
-              <h3 className="text-sm font-bold text-white">Live Form Preview</h3>
+              <Eye className="w-4 h-4 text-[#17449A]" />
+              <h3 className="text-sm font-extrabold text-slate-900">Live Form Preview</h3>
             </div>
-            <span className="text-[11px] text-slate-400 font-mono">Tampilan Peserta</span>
+            <span className="text-[11px] text-[#17449A] bg-[#17449A]/10 border border-[#17449A]/20 px-2.5 py-0.5 rounded-full font-semibold">
+              Tampilan Peserta
+            </span>
           </div>
 
-          <div className="space-y-4 text-xs opacity-90">
+          <div className="space-y-4 text-xs">
             {/* Standard Name */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Nama Lengkap <span className="text-rose-400">*</span>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                Nama Lengkap <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
                 disabled
                 placeholder="Nama peserta..."
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
               />
             </div>
 
             {/* Standard Email */}
             <div>
-              <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                Alamat Email <span className="text-rose-400">*</span>
+              <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                Alamat Email <span className="text-rose-500">*</span>
               </label>
               <input
                 type="email"
                 disabled
                 placeholder="email@peserta.com"
-                className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
               />
             </div>
 
             {/* Custom fields preview */}
             {fields.map((f) => (
               <div key={f.id} className="space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-300">
-                  {f.label} {f.required && <span className="text-rose-400">*</span>}
+                <label className="block text-[11px] font-bold text-slate-700">
+                  {f.label} {f.required && <span className="text-rose-500">*</span>}
                 </label>
 
                 {f.type === "text" && (
@@ -394,7 +398,7 @@ export function FormBuilderClient({
                     type="text"
                     disabled
                     placeholder={f.placeholder || ""}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                    className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
                   />
                 )}
 
@@ -403,14 +407,14 @@ export function FormBuilderClient({
                     rows={2}
                     disabled
                     placeholder={f.placeholder || ""}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                    className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
                   />
                 )}
 
                 {f.type === "dropdown" && (
                   <select
                     disabled
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                    className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
                   >
                     <option>{f.placeholder || "-- Pilih Salah Satu --"}</option>
                     {f.options?.map((o, idx) => (
@@ -422,7 +426,7 @@ export function FormBuilderClient({
                 {f.type === "radio" && (
                   <div className="space-y-1 pt-1">
                     {f.options?.map((o, idx) => (
-                      <label key={idx} className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <label key={idx} className="flex items-center gap-2 text-[11px] text-slate-600">
                         <input type="radio" disabled />
                         <span>{o}</span>
                       </label>
@@ -433,7 +437,7 @@ export function FormBuilderClient({
                 {f.type === "checkbox" && (
                   <div className="space-y-1 pt-1">
                     {f.options?.map((o, idx) => (
-                      <label key={idx} className="flex items-center gap-2 text-[11px] text-slate-400">
+                      <label key={idx} className="flex items-center gap-2 text-[11px] text-slate-600">
                         <input type="checkbox" disabled />
                         <span>{o}</span>
                       </label>
@@ -446,7 +450,7 @@ export function FormBuilderClient({
                     type="number"
                     disabled
                     placeholder={f.placeholder || ""}
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                    className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
                   />
                 )}
 
@@ -454,7 +458,7 @@ export function FormBuilderClient({
                   <input
                     type="date"
                     disabled
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 text-xs"
+                    className="w-full px-3 py-2 rounded-xl liquid-input text-slate-500 text-xs"
                   />
                 )}
               </div>
@@ -462,7 +466,7 @@ export function FormBuilderClient({
 
             <button
               disabled
-              className="w-full py-2.5 rounded-xl bg-indigo-600/40 text-indigo-200 text-xs font-semibold cursor-not-allowed mt-4"
+              className="w-full py-2.5 rounded-xl bg-indigo-600/80 text-white text-xs font-bold cursor-not-allowed mt-4 shadow-sm"
             >
               Kirim Pendaftaran (Contoh Tombol)
             </button>
