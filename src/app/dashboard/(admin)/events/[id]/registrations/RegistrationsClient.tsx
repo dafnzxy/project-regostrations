@@ -608,12 +608,12 @@ export function RegistrationsClient({
       {/* =================================================================== */}
       {/* TABLET & DESKTOP TABLE CONTAINER (>= 768px)                         */}
       {/* =================================================================== */}
-      <div className="hidden md:block rounded-3xl liquid-glass overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="hidden md:block rounded-3xl liquid-glass overflow-hidden shadow-sm">
+        <div className="overflow-x-auto scroll-smooth">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-100/80 border-b border-slate-200/80 text-slate-600 select-none">
-                <th className="p-3.5 w-10 text-center">
+              <tr className="bg-slate-100/90 border-b border-slate-200/80 text-slate-700 select-none">
+                <th className="p-3 w-10 text-center sticky left-0 z-20 bg-slate-100/95 backdrop-blur-md">
                   <input
                     type="checkbox"
                     checked={
@@ -621,23 +621,25 @@ export function RegistrationsClient({
                       filtered.length > 0
                     }
                     onChange={(e) => handleSelectAll(e.target.checked)}
-                    className="accent-indigo-600 w-3.5 h-3.5 rounded cursor-pointer"
+                    className="accent-[#17449A] w-3.5 h-3.5 rounded cursor-pointer"
                   />
                 </th>
-                <th className="p-3.5 font-bold text-slate-700">Peserta</th>
-                <th className="p-3.5 font-bold text-slate-700">Status</th>
+                <th className="p-3 font-bold text-slate-800 sticky left-10 z-20 bg-slate-100/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] min-w-[190px]">
+                  Peserta
+                </th>
+                <th className="p-3 font-bold text-slate-800 whitespace-nowrap min-w-[110px]">Status</th>
                 {formSchema.slice(0, 3).map((f) => (
                   <th
                     key={f.id}
-                    className="p-3.5 font-bold text-slate-700 whitespace-nowrap"
+                    className="p-3 font-bold text-slate-800 whitespace-nowrap max-w-[160px] truncate"
                   >
                     {f.label}
                   </th>
                 ))}
-                <th className="p-3.5 font-bold text-slate-700">
+                <th className="p-3 font-bold text-slate-800 whitespace-nowrap min-w-[110px]">
                   Status Email
                 </th>
-                <th className="p-3.5 font-bold text-slate-700 text-right">
+                <th className="p-3 font-bold text-slate-800 text-right pr-4 whitespace-nowrap min-w-[210px]">
                   Aksi & Kirim Tiket
                 </th>
               </tr>
@@ -669,24 +671,24 @@ export function RegistrationsClient({
                   return (
                     <tr
                       key={r.id}
-                      className={`hover:bg-white/80 transition-colors ${
+                      className={`hover:bg-white/90 transition-colors ${
                         isSelected ? "bg-indigo-50/60" : ""
                       }`}
                     >
-                      <td className="p-3.5 text-center">
+                      <td className="p-3 text-center sticky left-0 z-10 bg-white/95 backdrop-blur-md transition-colors">
                         <input
                           type="checkbox"
                           checked={isSelected}
                           onChange={(e) =>
                             handleSelectOne(r.id, e.target.checked)
                           }
-                          className="accent-indigo-600 w-3.5 h-3.5 rounded cursor-pointer"
+                          className="accent-[#17449A] w-3.5 h-3.5 rounded cursor-pointer"
                         />
                       </td>
 
-                      <td className="p-3.5">
-                        <div className="font-bold text-slate-900">{r.name}</div>
-                        <div className="text-[11px] text-slate-600">
+                      <td className="p-3 sticky left-10 z-10 bg-white/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] transition-colors min-w-[190px]">
+                        <div className="font-bold text-slate-900 truncate max-w-[190px]">{r.name}</div>
+                        <div className="text-[11px] text-slate-600 truncate max-w-[190px]">
                           {r.email}
                         </div>
                         {r.phone && (
@@ -696,7 +698,7 @@ export function RegistrationsClient({
                         )}
                       </td>
 
-                      <td className="p-3.5">
+                      <td className="p-3 whitespace-nowrap min-w-[110px]">
                         <StatusBadge status={r.status} />
                       </td>
 
@@ -708,14 +710,14 @@ export function RegistrationsClient({
                         return (
                           <td
                             key={f.id}
-                            className="p-3.5 text-slate-700 font-medium max-w-[160px] truncate"
+                            className="p-3 text-slate-700 font-medium max-w-[160px] truncate"
                           >
                             {displayVal}
                           </td>
                         );
                       })}
 
-                      <td className="p-3.5">
+                      <td className="p-3 whitespace-nowrap min-w-[110px]">
                         {emailLog ? (
                           <span
                             className={`inline-flex items-center gap-1 text-[11px] font-bold font-mono ${
@@ -738,8 +740,8 @@ export function RegistrationsClient({
                         )}
                       </td>
 
-                      <td className="p-3.5 text-right whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5">
+                      <td className="p-3 text-right pr-4 whitespace-nowrap min-w-[210px]">
+                        <div className="inline-flex items-center gap-1.5 justify-end">
                           {/* Approve / Reject buttons for PENDING */}
                           {isPending && (
                             <>

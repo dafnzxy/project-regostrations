@@ -31,7 +31,7 @@ export default async function AdminDashboardLayout({
       <AdminNavigation latestEvent={latestEvent} />
 
       {/* Main Content Area */}
-      <main className="flex-1 p-4 sm:p-6 md:p-8 lg:p-10 pb-24 sm:pb-10 max-w-7xl mx-auto w-full min-w-0">
+      <main className="flex-1 p-3.5 sm:p-5 md:p-6 lg:p-7 xl:p-8 pb-24 sm:pb-10 max-w-7xl mx-auto w-full min-w-0">
         {children}
       </main>
     </div>
