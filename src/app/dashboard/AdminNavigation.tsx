@@ -49,6 +49,8 @@ export function AdminNavigation({ latestEvent }: AdminNavigationProps) {
             <img
               src="/assets/yorindo-logo.png"
               alt="YORINDO Logo"
+              width={40}
+              height={40}
               className="w-10 h-10 object-contain shrink-0 mix-blend-multiply group-hover:scale-105 transition-transform"
             />
             <div className="min-w-0">
@@ -214,6 +216,8 @@ export function AdminNavigation({ latestEvent }: AdminNavigationProps) {
           <img
             src="/assets/yorindo-logo.png"
             alt="YORINDO Logo"
+            width={36}
+            height={36}
             className="w-9 h-9 object-contain shrink-0 mix-blend-multiply"
           />
           <div className="min-w-0">

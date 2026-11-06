@@ -14,6 +14,8 @@ export function PublicNavbar({ title }: PublicNavbarProps) {
           <img
             src="/assets/yorindo-logo.png"
             alt="YORINDO Logo"
+            width={36}
+            height={36}
             className="w-8 h-8 sm:w-9 sm:h-9 object-contain flex-shrink-0 mix-blend-multiply"
           />
           <div className="min-w-0 flex-1">

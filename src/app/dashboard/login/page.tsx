@@ -44,6 +44,8 @@ export default function AdminLoginPage() {
           <img
             src="/assets/yorindo-logo.png"
             alt="YORINDO Logo"
+            width={64}
+            height={64}
             className="w-16 h-16 object-contain mx-auto mix-blend-multiply"
           />
           <h1 className="text-2xl tracking-tight">
