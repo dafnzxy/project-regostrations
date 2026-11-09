@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getEventBySlug } from "@/actions/events";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { RegistrationForm } from "@/components/RegistrationForm";
+import { ShareEventQrButton } from "@/components/ShareEventQrButton";
 import { FormField } from "@/types";
 import { Calendar, MapPin, Users, Clock, ShieldCheck, Ticket } from "lucide-react";
 import Image from "next/image";
@@ -108,6 +109,7 @@ export default async function PublicEventPage({ params }: PageProps) {
                     <Users className="w-3 h-3 text-[#17449A]" />
                     <span>{quotaRemaining} kursi tersisa</span>
                   </span>
+                  <ShareEventQrButton slug={event.slug} eventTitle={event.title} />
                 </div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight leading-snug break-words">
                   {event.title}

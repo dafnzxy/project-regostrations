@@ -24,11 +24,11 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50/90 text-indigo-700 border border-indigo-200/90 shadow-xs backdrop-blur-md",
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#17449A]/10 text-[#17449A] border border-[#17449A]/20 shadow-xs backdrop-blur-md",
             className
           )}
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-indigo-600" />
+          <span className="w-1.5 h-1.5 rounded-full bg-[#17449A]" />
           Hadir (Checked-In)
         </span>
       );

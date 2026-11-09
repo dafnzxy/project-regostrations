@@ -149,7 +149,7 @@ export default async function DashboardPage() {
             </p>
             <Link
               href="/dashboard/events/new"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-500/20"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/20"
             >
               <Plus className="w-4 h-4" />
               <span>Buat Event Baru</span>
@@ -204,7 +204,12 @@ export default async function DashboardPage() {
                       </div>
                     </div>
 
-                    <EventCardActions eventId={evt.id} slug={evt.slug} status={evt.status} />
+                    <EventCardActions
+                      eventId={evt.id}
+                      slug={evt.slug}
+                      status={evt.status}
+                      eventTitle={evt.title}
+                    />
                   </div>
 
                   {/* Quota Progress Bar inside Translucent Sub-Card */}

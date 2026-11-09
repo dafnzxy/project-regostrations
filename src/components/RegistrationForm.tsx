@@ -137,8 +137,8 @@ export function RegistrationForm({
             </div>
           </div>
         ) : (
-          <div className="bg-indigo-50/90 border border-indigo-200 rounded-2xl p-5 mb-6 text-left max-w-md mx-auto">
-            <div className="flex items-center gap-2 text-indigo-700 font-bold text-sm mb-1">
+          <div className="bg-[#17449A]/10 border border-[#17449A]/20 rounded-2xl p-5 mb-6 text-left max-w-md mx-auto">
+            <div className="flex items-center gap-2 text-[#17449A] font-bold text-sm mb-1">
               <Mail className="w-4 h-4" />
               <span>Menunggu Konfirmasi Admin</span>
             </div>
@@ -157,7 +157,7 @@ export function RegistrationForm({
             setPhone("");
             setCustomAnswers({});
           }}
-          className="text-xs font-bold text-indigo-600 hover:text-indigo-500 underline underline-offset-4 cursor-pointer"
+          className="text-xs font-bold text-[#17449A] hover:text-[#12367B] underline underline-offset-4 cursor-pointer"
         >
           Daftarkan Peserta Lain
         </button>
@@ -312,7 +312,7 @@ export function RegistrationForm({
                         key={idx}
                         className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                           fieldValue === opt
-                            ? "bg-indigo-50 border-indigo-400 text-indigo-900"
+                            ? "bg-[#17449A]/10 border-[#17449A] text-slate-900"
                             : "liquid-card text-slate-700 hover:border-slate-300"
                         }`}
                       >
@@ -323,7 +323,7 @@ export function RegistrationForm({
                           checked={fieldValue === opt}
                           onChange={() => handleCustomFieldChange(field.id, opt)}
                           required={field.required && !fieldValue}
-                          className="accent-indigo-600 w-3.5 h-3.5"
+                          className="accent-[#17449A] w-3.5 h-3.5"
                         />
                         <span>{opt}</span>
                       </label>
@@ -340,7 +340,7 @@ export function RegistrationForm({
                           key={idx}
                           className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                             isChecked
-                              ? "bg-indigo-50 border-indigo-400 text-indigo-900"
+                              ? "bg-[#17449A]/10 border-[#17449A] text-slate-900"
                               : "liquid-card text-slate-700 hover:border-slate-300"
                           }`}
                         >
@@ -348,7 +348,7 @@ export function RegistrationForm({
                             type="checkbox"
                             checked={isChecked}
                             onChange={(e) => handleCheckboxChange(field.id, opt, e.target.checked)}
-                            className="accent-indigo-600 w-3.5 h-3.5 rounded"
+                            className="accent-[#17449A] w-3.5 h-3.5 rounded"
                           />
                           <span>{opt}</span>
                         </label>

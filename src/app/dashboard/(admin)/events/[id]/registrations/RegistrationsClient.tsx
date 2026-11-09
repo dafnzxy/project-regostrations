@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { FormField } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
+import { EventQrModal } from "@/components/EventQrModal";
 import {
   approveRegistration,
   bulkApproveRegistrations,
@@ -64,6 +65,7 @@ interface RegistrationsClientProps {
   eventTitle: string;
   eventLocation?: string | null;
   eventStartsAt: string;
+  eventSlug?: string;
   initialEmailSubject?: string | null;
   initialEmailBody?: string | null;
   formSchema: FormField[];
@@ -75,6 +77,7 @@ export function RegistrationsClient({
   eventTitle,
   eventLocation,
   eventStartsAt,
+  eventSlug,
   initialEmailSubject,
   initialEmailBody,
   formSchema,
@@ -86,6 +89,7 @@ export function RegistrationsClient({
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
+  const [showEventQrModal, setShowEventQrModal] = useState(false);
 
   useEffect(() => {
     setRegistrations(initialRegistrations);
@@ -412,6 +416,16 @@ export function RegistrationsClient({
 
           <button
             type="button"
+            onClick={() => setShowEventQrModal(true)}
+            className="px-3 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-[#17449A] liquid-pill flex items-center justify-center gap-1.5 cursor-pointer"
+            title="Tampilkan & Download QR Code Pendaftaran Event"
+          >
+            <QrCode className="w-3.5 h-3.5 text-[#17449A] shrink-0" />
+            <span className="truncate">QR Link</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => openSendTicketModal()}
             className="px-3 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-[#17449A] liquid-pill flex items-center justify-center gap-1.5 cursor-pointer"
           >
@@ -465,7 +479,7 @@ export function RegistrationsClient({
               <div
                 key={r.id}
                 className={`p-4 rounded-2xl liquid-glass space-y-3 ${
-                  isSelected ? "ring-2 ring-indigo-500/40 bg-indigo-50/50" : ""
+                  isSelected ? "ring-2 ring-[#17449A]/40 bg-[#17449A]/5" : ""
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -474,7 +488,7 @@ export function RegistrationsClient({
                       type="checkbox"
                       checked={isSelected}
                       onChange={(e) => handleSelectOne(r.id, e.target.checked)}
-                      className="accent-indigo-600 w-4 h-4 rounded mt-0.5 cursor-pointer shrink-0"
+                      className="accent-[#17449A] w-4 h-4 rounded mt-0.5 cursor-pointer shrink-0"
                     />
                     <div className="min-w-0">
                       <div className="font-extrabold text-sm text-slate-900 break-words">
@@ -674,7 +688,7 @@ export function RegistrationsClient({
                     <tr
                       key={r.id}
                       className={`hover:bg-white/90 transition-colors ${
-                        isSelected ? "bg-indigo-50/60" : ""
+                        isSelected ? "bg-[#17449A]/5" : ""
                       }`}
                     >
                       <td className="p-3 text-center sticky left-0 z-10 bg-white/95 backdrop-blur-md transition-colors">
@@ -932,16 +946,16 @@ export function RegistrationsClient({
               <div className="p-4 rounded-2xl liquid-card space-y-3 animate-fade-in">
                 <div className="text-[11px] text-slate-600 flex flex-wrap items-center gap-1.5">
                   <span className="font-semibold">Variabel otomatis:</span>
-                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                  <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
                     {"{{name}}"}
                   </code>
-                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                  <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
                     {"{{event}}"}
                   </code>
-                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                  <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
                     {"{{date}}"}
                   </code>
-                  <code className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-bold">
+                  <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
                     {"{{location}}"}
                   </code>
                 </div>
@@ -1080,9 +1094,9 @@ export function RegistrationsClient({
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-indigo-700 liquid-pill flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl text-xs font-bold text-[#17449A] liquid-pill flex items-center gap-1.5 cursor-pointer"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-indigo-600" />
+                      <ExternalLink className="w-3.5 h-3.5 text-[#17449A]" />
                       <span>Kirim via Gmail Web</span>
                     </a>
 
@@ -1180,7 +1194,7 @@ export function RegistrationsClient({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-600/25 cursor-pointer"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/20 cursor-pointer"
                 >
                   Tambah & Setujui
                 </button>
@@ -1189,6 +1203,14 @@ export function RegistrationsClient({
           </div>
         </div>
       )}
+
+      {/* Event Registration Link QR Modal */}
+      <EventQrModal
+        isOpen={showEventQrModal}
+        onClose={() => setShowEventQrModal(false)}
+        slug={eventSlug || ""}
+        eventTitle={eventTitle}
+      />
     </div>
   );
 }

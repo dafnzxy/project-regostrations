@@ -203,7 +203,7 @@ export default async function TicketPage({ params }: PageProps) {
         <div className="mt-6 text-center">
           <Link
             href={`/e/${reg.event.slug}`}
-            className="text-xs font-bold text-indigo-600 hover:text-indigo-500 underline underline-offset-4"
+            className="text-xs font-bold text-[#17449A] hover:text-[#12367B] underline underline-offset-4"
           >
             ← Kembali ke Halaman Registrasi Event
           </Link>

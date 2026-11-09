@@ -36,7 +36,7 @@ export default async function EventRegistrationsPage({ params }: PageProps) {
         <div>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 mb-2 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#17449A] mb-2 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Dashboard</span>
@@ -52,7 +52,7 @@ export default async function EventRegistrationsPage({ params }: PageProps) {
         <div className="flex flex-wrap items-center gap-2">
           <a
             href={`/api/events/${event.id}/export`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20 transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 shadow-md shadow-slate-900/15 transition-all"
           >
             <FileSpreadsheet className="w-3.5 h-3.5" />
             <span>Download Laporan Excel (.xlsx)</span>
@@ -60,17 +60,17 @@ export default async function EventRegistrationsPage({ params }: PageProps) {
 
           <Link
             href={`/dashboard/events/${event.id}/checkin`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill hover:text-[#17449A]"
           >
-            <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+            <QrCode className="w-3.5 h-3.5 text-[#17449A]" />
             <span>Scanner Hari-H</span>
           </Link>
 
           <Link
             href={`/dashboard/events/${event.id}/doorprize`}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill hover:text-[#17449A]"
           >
-            <Sparkles className="w-3.5 h-3.5 text-pink-600" />
+            <Sparkles className="w-3.5 h-3.5 text-slate-900" />
             <span>Undian Doorprize</span>
           </Link>
         </div>
@@ -78,6 +78,7 @@ export default async function EventRegistrationsPage({ params }: PageProps) {
 
       <RegistrationsClient
         eventId={event.id}
+        eventSlug={event.slug}
         eventTitle={event.title}
         eventLocation={event.location}
         eventStartsAt={event.startsAt.toISOString()}
