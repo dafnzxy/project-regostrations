@@ -23,6 +23,8 @@
 # misc
 .DS_Store
 *.pem
+*.csv
+sheet.csv
 
 # debug
 npm-debug.log*
