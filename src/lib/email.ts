@@ -157,6 +157,7 @@ export async function sendRsvpEmail({
 
     if (isRealSmtp) {
       const transporter = nodemailer.createTransport({
+        name: "yorindoregistration.id",
         host: smtpHost,
         port: smtpPort,
         secure: smtpPort === 465,

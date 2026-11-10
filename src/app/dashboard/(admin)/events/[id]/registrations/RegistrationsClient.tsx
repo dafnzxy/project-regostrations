@@ -37,6 +37,7 @@ import {
   Edit3,
   Save,
   X,
+  MessageCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -363,6 +364,27 @@ export function RegistrationsClient({
     date: formattedEventDate,
   });
 
+  const buildWhatsAppUrl = (reg: RegistrationWithLogs) => {
+    let digits = (reg.phone || "").replace(/[^0-9]/g, "");
+    if (digits.startsWith("0")) {
+      digits = "62" + digits.slice(1);
+    } else if (!digits.startsWith("62") && digits.length > 0) {
+      digits = "62" + digits;
+    }
+
+    const bodyForParticipant = resolveEmailTemplateVars(emailBody, {
+      name: reg.name,
+      event: eventTitle,
+      location: eventLocation,
+      date: formattedEventDate,
+    }).replace(
+      /\[ATTENDEE QR CODE\]|\{\{\s*qr_code\s*\}\}/gi,
+      `👉 *Buka & Simpan QR Code Personal Anda di sini:*\n${origin}/ticket/${reg.qrToken}`
+    );
+
+    return `https://wa.me/${digits}?text=${encodeURIComponent(bodyForParticipant)}`;
+  };
+
   return (
     <div className="space-y-6">
       {/* Controls: Search, Filter, Bulk Actions, Email Template, Export Excel */}
@@ -594,6 +616,19 @@ export function RegistrationsClient({
                     <span>Kirim Tiket</span>
                   </button>
 
+                  {r.phone && (
+                    <a
+                      href={buildWhatsAppUrl(r)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="py-2 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 inline-flex items-center justify-center gap-1 text-xs font-bold cursor-pointer"
+                      title="Kirim Tiket & QR via WhatsApp"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      <span>WA</span>
+                    </a>
+                  )}
+
                   <Link
                     href={`/ticket/${r.qrToken}`}
                     target="_blank"
@@ -810,6 +845,20 @@ export function RegistrationsClient({
                             <Send className="w-3.5 h-3.5 text-[#17449A]" />
                             <span className="hidden xl:inline">Tiket</span>
                           </button>
+
+                          {/* Direct WhatsApp Ticket Send */}
+                          {r.phone && (
+                            <a
+                              href={buildWhatsAppUrl(r)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={`Kirim Tiket via WhatsApp (${r.phone})`}
+                              className="p-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 inline-flex items-center gap-1 text-[11px] font-bold cursor-pointer transition-colors"
+                            >
+                              <MessageCircle className="w-3.5 h-3.5" />
+                              <span className="hidden xl:inline">WA</span>
+                            </a>
+                          )}
 
                           {/* View Digital Ticket */}
                           <Link
@@ -1080,6 +1129,18 @@ export function RegistrationsClient({
 
                 {emailModalTarget && (
                   <>
+                    {emailModalTarget.phone && (
+                      <a
+                        href={buildWhatsAppUrl(emailModalTarget)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 flex items-center gap-1.5 cursor-pointer transition-colors"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Kirim via WhatsApp</span>
+                      </a>
+                    )}
+
                     <a
                       href={`https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
                         emailModalTarget.email
