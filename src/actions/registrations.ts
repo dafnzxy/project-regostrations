@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { sendRsvpEmail } from "@/lib/email";
+import { sendWhatsAppTicketViaFonnte } from "@/lib/whatsapp";
 import { requireAdminAuth } from "./auth";
 import { FormField } from "@/types";
 
@@ -358,6 +359,34 @@ export async function resendRsvpEmail(
     eventStartsAt: reg.event.startsAt,
     qrToken: reg.qrToken,
     customSubject: templateOverride?.subject || reg.event.emailSubject,
+    customBody: templateOverride?.body || reg.event.emailBody,
+  });
+
+  revalidatePath(`/dashboard/events/${reg.eventId}/registrations`);
+  return res;
+}
+
+export async function sendWhatsAppTicket(
+  id: string,
+  templateOverride?: { body?: string }
+) {
+  await requireAdminAuth();
+
+  const reg = await prisma.registration.findUnique({
+    where: { id },
+    include: { event: true },
+  });
+
+  if (!reg) throw new Error("Peserta tidak ditemukan");
+  if (!reg.phone) throw new Error("Nomor WhatsApp peserta tidak tersedia.");
+
+  const res = await sendWhatsAppTicketViaFonnte({
+    recipientPhone: reg.phone,
+    recipientName: reg.name,
+    eventTitle: reg.event.title,
+    eventLocation: reg.event.location,
+    eventStartsAt: reg.event.startsAt,
+    qrToken: reg.qrToken,
     customBody: templateOverride?.body || reg.event.emailBody,
   });
 

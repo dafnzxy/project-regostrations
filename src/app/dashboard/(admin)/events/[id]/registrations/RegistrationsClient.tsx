@@ -10,6 +10,7 @@ import {
   rejectRegistration,
   deleteRegistration,
   resendRsvpEmail,
+  sendWhatsAppTicket,
   addManualAttendee,
   manualCheckInById,
 } from "@/actions/registrations";
@@ -119,6 +120,7 @@ export function RegistrationsClient({
     useState<RegistrationWithLogs | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [sendingModalEmail, setSendingModalEmail] = useState(false);
+  const [sendingModalWhatsApp, setSendingModalWhatsApp] = useState(false);
   const [origin, setOrigin] = useState("https://yorindoregistration.id");
 
   useEffect(() => {
@@ -235,6 +237,30 @@ export function RegistrationsClient({
       alert("Gagal mengirim tiket: " + e.message);
     } finally {
       setSendingModalEmail(false);
+    }
+  };
+
+  const handleSendWhatsAppAuto = async () => {
+    if (!emailModalTarget) return;
+    setSendingModalWhatsApp(true);
+    try {
+      const res = await sendWhatsAppTicket(emailModalTarget.id, {
+        body: emailBody,
+      });
+
+      if (res.success) {
+        alert(
+          `✓ Tiket & QR Code resmi berhasil dikirim otomatis ke WhatsApp ${emailModalTarget.name} (${emailModalTarget.phone})!`
+        );
+        setShowEmailModal(false);
+      } else {
+        alert(`Gagal mengirim WhatsApp otomatis: ${res.error}`);
+      }
+      router.refresh();
+    } catch (e: any) {
+      alert("Gagal mengirim WhatsApp: " + e.message);
+    } finally {
+      setSendingModalWhatsApp(false);
     }
   };
 
@@ -1160,11 +1186,28 @@ export function RegistrationsClient({
                       <span>Kirim via Gmail Web</span>
                     </a>
 
+                    {emailModalTarget.phone && (
+                      <button
+                        type="button"
+                        onClick={handleSendWhatsAppAuto}
+                        disabled={sendingModalWhatsApp}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/25 flex items-center gap-1.5 cursor-pointer transition-all disabled:opacity-50"
+                        title="Kirim pesan konfirmasi resmi & link tiket langsung via Fonnte Gateway"
+                      >
+                        {sendingModalWhatsApp ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <MessageCircle className="w-3.5 h-3.5" />
+                        )}
+                        <span>Kirim WA Otomatis</span>
+                      </button>
+                    )}
+
                     <button
                       type="button"
                       onClick={handleSendFromModal}
                       disabled={sendingModalEmail}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-600/25 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                     >
                       {sendingModalEmail ? (
                         <>
