@@ -72,7 +72,7 @@ model Registration {
   emailLogs    EmailLog[]
   prizeDraws   PrizeDraw[]
 
-  @@unique([eventId, email])
+  @@index([eventId, email])
 }
 
 model EmailLog {

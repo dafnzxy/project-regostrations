@@ -41,8 +41,11 @@ function parseCSV(text) {
 }
 
 const rows = parseCSV(content);
-console.log('Total valid rows:', rows.length);
-console.log('Headers:', rows[0]);
-console.log('First data row:', rows[1]);
-console.log('Last data row:', rows[rows.length - 1]);
+console.log('Total rows (including header):', rows.length);
+console.log('Total participant rows:', rows.length - 1);
+console.log('Last 8 rows:');
+rows.slice(-8).forEach((r, i) => {
+  const rowNum = rows.length - 8 + i + 1;
+  console.log(`Row ${rowNum}: ${r[0]} - ${r[1]} (${r[2]}) - ${r[7]}`);
+});
 

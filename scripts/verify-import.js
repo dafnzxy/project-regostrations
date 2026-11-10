@@ -23,3 +23,4 @@ async function check() {
   await prisma.$disconnect();
 }
 check().catch(console.error);
+

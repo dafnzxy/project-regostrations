@@ -148,11 +148,12 @@ export async function registerParticipant(
   }
 
   // Check duplicate email
-  const existing = await prisma.registration.findUnique({
+  const existing = await prisma.registration.findFirst({
     where: {
-      eventId_email: {
-        eventId: event.id,
-        email: cleanEmail,
+      eventId: event.id,
+      email: {
+        equals: cleanEmail,
+        mode: "insensitive",
       },
     },
   });

@@ -217,6 +217,17 @@ async function main() {
 
   console.log(`Event ready! ID: ${event.id}`);
 
+  // Remove strict unique constraint on (eventId, email) so all spreadsheet rows can be stored 1:1
+  await prisma.$executeRawUnsafe('DROP INDEX IF EXISTS "Registration_eventId_email_key";');
+  await prisma.$executeRawUnsafe('CREATE INDEX IF NOT EXISTS "Registration_eventId_email_idx" ON "Registration"("eventId", "email");');
+
+  // Fetch existing registrations for this event
+  const existingRegs = await prisma.registration.findMany({
+    where: { eventId: event.id },
+    orderBy: { createdAt: 'asc' }
+  });
+  const usedExistingIds = new Set();
+
   // 2. Read and parse CSV
   const csvContent = fs.readFileSync('sheet.csv', 'utf8');
   const rows = parseCSV(csvContent);
@@ -258,25 +269,23 @@ async function main() {
       persetujuan_data: persetujuan ? [persetujuan] : []
     };
 
-    const existing = await prisma.registration.findUnique({
-      where: {
-        eventId_email: {
-          eventId: event.id,
-          email: email
-        }
-      }
-    });
+    // Find an unused existing record with the same email
+    const existing = existingRegs.find(
+      (reg) => reg.email.toLowerCase() === email && !usedExistingIds.has(reg.id)
+    );
 
     if (existing) {
+      usedExistingIds.add(existing.id);
       await prisma.registration.update({
         where: { id: existing.id },
         data: {
           name: name,
           phone: phone || existing.phone,
           answers: JSON.stringify(answersObj),
-          status: 'APPROVED',
-          approvedBy: 'Admin Yorindo (Import)',
-          approvedAt: existing.approvedAt || new Date()
+          status: existing.status || 'APPROVED',
+          approvedBy: existing.approvedBy || 'Admin Yorindo (Import)',
+          approvedAt: existing.approvedAt || new Date(),
+          createdAt: createdAt
         }
       });
       updatedCount++;
