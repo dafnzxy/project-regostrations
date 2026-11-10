@@ -947,7 +947,10 @@ export function RegistrationsClient({
                 <div className="text-[11px] text-slate-600 flex flex-wrap items-center gap-1.5">
                   <span className="font-semibold">Variabel otomatis:</span>
                   <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
-                    {"{{name}}"}
+                    {"[Participant Name]"}
+                  </code>
+                  <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
+                    {"[ATTENDEE QR CODE]"}
                   </code>
                   <code className="px-1.5 py-0.5 rounded bg-[#17449A]/10 text-[#17449A] font-bold">
                     {"{{event}}"}
@@ -974,10 +977,10 @@ export function RegistrationsClient({
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Isi Pesan Pengantar Email
+                    Isi Surat Konfirmasi Email
                   </label>
                   <textarea
-                    rows={5}
+                    rows={8}
                     value={emailBody}
                     onChange={(e) => setEmailBody(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl liquid-input text-slate-900 text-xs leading-relaxed"
@@ -990,7 +993,7 @@ export function RegistrationsClient({
             <div className="space-y-2">
               <div className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5" />
-                <span>2. Pratinjau Email E-Tiket yang Diterima Peserta</span>
+                <span>2. Pratinjau Email Formal yang Diterima Peserta</span>
               </div>
 
               <div className="rounded-2xl border border-slate-200 overflow-hidden bg-white shadow-sm">
@@ -1012,47 +1015,40 @@ export function RegistrationsClient({
                   </div>
                 </div>
 
-                {/* Email Visual Body Card */}
-                <div className="p-5 bg-white text-slate-800 text-xs space-y-4">
-                  <div className="bg-[#17449A] p-4 rounded-xl text-white text-center">
-                    <div className="text-[10px] font-bold uppercase tracking-widest opacity-85">
-                      E-Ticket Resmi Acara
-                    </div>
-                    <div className="text-base font-extrabold mt-0.5">
-                      {eventTitle}
-                    </div>
-                  </div>
+                {/* Formal Email Letter Body */}
+                <div className="p-6 bg-white text-slate-800 text-xs space-y-4 border-t-4 border-[#17449A]">
+                  {(() => {
+                    const qrRegex = /\[ATTENDEE QR CODE\]|\{\{\s*qr_code\s*\}\}/i;
+                    const parts = resolvedPreviewBody.split(qrRegex);
+                    const beforeQr = parts[0] || "";
+                    const afterQr = parts.length > 1 ? parts.slice(1).join("\n\n") : "";
 
-                  <div className="space-y-2 text-slate-700 leading-relaxed whitespace-pre-line text-xs">
-                    {resolvedPreviewBody}
-                  </div>
+                    return (
+                      <>
+                        <div className="text-slate-800 leading-relaxed whitespace-pre-line text-xs">
+                          {beforeQr.trim()}
+                        </div>
 
-                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1 text-[11px] text-slate-600">
-                    <div>
-                      <strong className="text-slate-800">👤 Nama Peserta:</strong>{" "}
-                      {previewName}
-                    </div>
-                    <div>
-                      <strong className="text-slate-800">🗓 Waktu Acara:</strong>{" "}
-                      {formattedEventDate}
-                    </div>
-                    <div>
-                      <strong className="text-slate-800">📍 Lokasi / Venue:</strong>{" "}
-                      {eventLocation || "Akan diinfokan panitia"}
-                    </div>
-                  </div>
+                        <div className="my-4 p-5 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-2">
+                          <div className="inline-flex items-center justify-center w-24 h-24 rounded-lg bg-white border border-slate-300 text-slate-900 mx-auto shadow-2xs">
+                            <QrCode className="w-16 h-16" />
+                          </div>
+                          <div className="font-mono text-[11px] text-slate-600">
+                            ID: {previewToken}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            [Personal QR Code Image Attached Automatically]
+                          </div>
+                        </div>
 
-                  <div className="p-4 rounded-xl bg-slate-50 border border-dashed border-slate-300 text-center space-y-2">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-white border-2 border-[#17449A] text-[#17449A] mx-auto">
-                      <QrCode className="w-10 h-10" />
-                    </div>
-                    <div className="font-mono text-[11px] font-bold text-slate-700">
-                      TOKEN: {previewToken}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      [QR Code Unik Peserta Otomatis Terlampir di Email]
-                    </div>
-                  </div>
+                        {afterQr.trim() && (
+                          <div className="text-slate-800 leading-relaxed whitespace-pre-line text-xs">
+                            {afterQr.trim()}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
@@ -1090,7 +1086,10 @@ export function RegistrationsClient({
                       )}&su=${encodeURIComponent(
                         resolvedPreviewSubject
                       )}&body=${encodeURIComponent(
-                        `${resolvedPreviewBody}\n\n----------------------------------------\nDETAIL E-TIKET & QR CODE CHECK-IN\n----------------------------------------\nNama Peserta : ${emailModalTarget.name}\nAcara        : ${eventTitle}\nWaktu        : ${formattedEventDate}\nLokasi       : ${eventLocation || "Sesuai undangan"}\nToken QR     : ${emailModalTarget.qrToken}\n\nBuka & Unduh QR Code E-Tiket Anda di sini:\n${origin}/ticket/${emailModalTarget.qrToken}`
+                        resolvedPreviewBody.replace(
+                          /\[ATTENDEE QR CODE\]|\{\{\s*qr_code\s*\}\}/gi,
+                          `Personal QR Code Link:\n${origin}/ticket/${emailModalTarget.qrToken}`
+                        )
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"

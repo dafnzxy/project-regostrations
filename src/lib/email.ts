@@ -27,6 +27,20 @@ function escapeHtml(str: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function formatParagraphsHtml(text: string): string {
+  return text
+    .trim()
+    .split(/\n\s*\n/)
+    .filter(Boolean)
+    .map(
+      (paragraph) =>
+        `<p style="color: #1e293b; font-size: 14px; line-height: 1.7; margin: 0 0 16px 0;">${escapeHtml(
+          paragraph.trim()
+        ).replace(/\n/g, "<br />")}</p>`
+    )
+    .join("");
+}
+
 export async function sendRsvpEmail({
   registrationId,
   recipientEmail,
@@ -38,9 +52,11 @@ export async function sendRsvpEmail({
   customSubject,
   customBody,
 }: SendRsvpEmailParams) {
-  const formattedDate = new Intl.DateTimeFormat("id-ID", {
-    dateStyle: "full",
-    timeStyle: "short",
+  const formattedDate = new Intl.DateTimeFormat("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
     timeZone: "Asia/Jakarta",
   }).format(new Date(eventStartsAt));
 
@@ -63,18 +79,42 @@ export async function sendRsvpEmail({
     date: formattedDate,
   });
 
-  const bodyParagraphsHtml = resolvedBodyText
-    .split(/\n\s*\n/)
-    .map(
-      (paragraph) =>
-        `<p style="color: #334155; font-size: 14px; line-height: 1.65; margin: 0 0 14px 0;">${escapeHtml(
-          paragraph.trim()
-        ).replace(/\n/g, "<br />")}</p>`
-    )
-    .join("");
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yorindoregistration.id";
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || "https://yorindoregistration.id";
   const ticketUrl = `${appUrl}/ticket/${qrToken}`;
+
+  const qrBlockHtml = `
+    <div style="margin: 24px 0; padding: 24px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
+      <img src="cid:qrcode_ticket" alt="Personal QR Code" style="width: 200px; height: 200px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #ffffff; display: block; margin: 0 auto;" />
+      <div style="font-family: monospace; font-size: 12px; color: #475569; margin-top: 10px; letter-spacing: 0.5px;">
+        ID: ${escapeHtml(qrToken)}
+      </div>
+      <div style="margin-top: 14px;">
+        <a href="${ticketUrl}" style="background-color: #17449A; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">
+          Open / Download Digital QR Pass
+        </a>
+      </div>
+    </div>
+  `;
+
+  let mainContentHtml = "";
+  const qrPlaceholderRegex = /\[ATTENDEE QR CODE\]|\{\{\s*qr_code\s*\}\}/i;
+
+  if (qrPlaceholderRegex.test(resolvedBodyText)) {
+    const parts = resolvedBodyText.split(qrPlaceholderRegex);
+    const beforeQr = parts[0] || "";
+    const afterQr = parts.slice(1).join("\n\n") || "";
+    mainContentHtml = `
+      ${formatParagraphsHtml(beforeQr)}
+      ${qrBlockHtml}
+      ${formatParagraphsHtml(afterQr)}
+    `;
+  } else {
+    mainContentHtml = `
+      ${formatParagraphsHtml(resolvedBodyText)}
+      ${qrBlockHtml}
+    `;
+  }
 
   // Create an EmailLog entry with status QUEUED
   const log = await prisma.emailLog.create({
@@ -99,11 +139,15 @@ export async function sendRsvpEmail({
     dbSettings?.smtpPort ||
     (process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : 587);
   const smtpUser = (dbSettings?.smtpUser || process.env.SMTP_USER || "").trim();
-  const smtpPass = (dbSettings?.smtpPass || process.env.SMTP_PASS || "").replace(/\s+/g, "");
+  const smtpPass = (
+    dbSettings?.smtpPass ||
+    process.env.SMTP_PASS ||
+    ""
+  ).replace(/\s+/g, "");
   const smtpFrom =
     dbSettings?.smtpFrom ||
     process.env.SMTP_FROM ||
-    `"YORINDO registration" <${smtpUser || "rsvp@yorindo.id"}>`;
+    `"BSSN CORE 3 - Yorindo Communication" <${smtpUser || "rsvp@yorindoregistration.id"}>`;
 
   try {
     // Generate QR code data URL
@@ -117,7 +161,7 @@ export async function sendRsvpEmail({
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
-        secure: smtpPort === 465, // SSL for 465, TLS for 587
+        secure: smtpPort === 465,
         auth: {
           user: smtpUser,
           pass: smtpPass,
@@ -125,57 +169,8 @@ export async function sendRsvpEmail({
       });
 
       const htmlContent = `
-        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 580px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; color: #1e293b;">
-          <div style="background: linear-gradient(135deg, #4f46e5, #7c3aed); padding: 28px 24px; border-radius: 12px; color: #ffffff; text-align: center; margin-bottom: 24px;">
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.9; margin-bottom: 6px;">E-Ticket Resmi Acara</div>
-            <h1 style="margin: 0; font-size: 22px; font-weight: 800; line-height: 1.3;">${escapeHtml(
-              eventTitle
-            )}</h1>
-          </div>
-
-          <div style="margin-bottom: 20px;">
-            ${bodyParagraphsHtml}
-          </div>
-
-          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px;">
-            <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
-              <strong style="color: #334155;">👤 Nama Peserta:</strong> ${escapeHtml(
-                recipientName
-              )}
-            </div>
-            <div style="font-size: 13px; color: #64748b; margin-bottom: 8px;">
-              <strong style="color: #334155;">🗓 Waktu Acara:</strong> ${escapeHtml(
-                formattedDate
-              )}
-            </div>
-            <div style="font-size: 13px; color: #64748b;">
-              <strong style="color: #334155;">📍 Lokasi / Venue:</strong> ${escapeHtml(
-                eventLocation || "Akan diinfokan panitia"
-              )}
-            </div>
-          </div>
-
-          <div style="text-align: center; padding: 24px 20px; background-color: #f1f5f9; border-radius: 16px; margin-bottom: 24px; border: 1px dashed #cbd5e1;">
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #4f46e5; margin-bottom: 12px;">
-              Tiket Akses Check-In QR Code
-            </div>
-            <img src="cid:qrcode_ticket" alt="QR Code Ticket" style="width: 220px; height: 220px; border: 4px solid #4f46e5; border-radius: 12px; padding: 8px; background: #ffffff; display: block; margin: 0 auto;" />
-            <div style="font-family: monospace; font-size: 12px; font-weight: 700; color: #334155; margin-top: 12px; letter-spacing: 1px;">
-              TOKEN: ${escapeHtml(qrToken)}
-            </div>
-            <p style="font-size: 12px; color: #64748b; margin-top: 4px; margin-bottom: 16px;">
-              Tunjukkan QR Code di atas kepada petugas saat tiba di lokasi acara
-            </p>
-            <a href="${ticketUrl}" style="background-color: #4f46e5; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 13px; display: inline-block;">
-              Buka & Unduh E-Ticket Digital
-            </a>
-          </div>
-
-          <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-          <p style="font-size: 11px; color: #94a3b8; text-align: center; margin: 0; line-height: 1.5;">
-            Email ini dikirim secara otomatis oleh Sistem <strong style="color: #17449A;">YORINDO</strong> <strong style="color: #000000;">registration</strong>.<br />
-            Simpan tiket ini dan jangan bagikan kode QR Anda kepada orang lain.
-          </p>
+        <div style="font-family: Arial, 'Segoe UI', Helvetica, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-top: 4px solid #17449A; border-radius: 8px; padding: 32px 28px; color: #1e293b;">
+          ${mainContentHtml}
         </div>
       `;
 
@@ -186,7 +181,7 @@ export async function sendRsvpEmail({
         html: htmlContent,
         attachments: [
           {
-            filename: `E-Ticket-${qrToken.slice(0, 8)}.png`,
+            filename: `QR-Code-${qrToken.slice(0, 8)}.png`,
             content: qrBuffer,
             cid: "qrcode_ticket",
           },

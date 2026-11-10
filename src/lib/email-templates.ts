@@ -9,59 +9,98 @@ export interface EmailTemplatePreset {
 
 export const EMAIL_TEMPLATE_PRESETS: EmailTemplatePreset[] = [
   {
-    id: "formal",
-    name: "Resmi & Profesional",
-    badge: "Default • Rekomendasi",
-    description: "Cocok untuk seminar, konferensi, acara kantor, atau instansi resmi.",
-    subject: "[E-Tiket Resmi] Konfirmasi Kehadiran {{event}} - {{name}}",
-    body: `Halo {{name}},
+    id: "bssn_formal",
+    name: "BSSN CORE 3 – Formal (English)",
+    badge: "Default • Resmi",
+    description: "Template resmi BSSN CORE 3 dengan susunan surat formal yang bersih dan rapi.",
+    subject: "Registration Confirmation: BSSN CORE 3 – CSIRT Operation Readiness for Economics 2026 - [Participant Name]",
+    body: `Dear Mr./Ms. [Participant Name],
 
-Terima kasih telah melakukan pendaftaran pada acara {{event}}. Kami dengan senang hati mengonfirmasi bahwa pendaftaran Anda telah DISETUJUI (ACC) oleh panitia.
+Greetings from BSSN CORE 3 – CSIRT Operation Readiness for Economics 2026.
 
-Berikut adalah E-Tiket resmi beserta QR Code khusus untuk Anda. Mohon simpan email ini dan tunjukkan QR Code di bawah kepada petugas meja registrasi saat kedatangan di lokasi acara.
+Thank you for registering. We are pleased to confirm that your registration for BSSN CORE 3 has been successfully confirmed.
 
-Sampai jumpa di lokasi acara!`,
+Please find your event details below:
+Event: BSSN CORE 3 – CSIRT Operation Readiness for Economics
+Date: Thursday, 12 November 2026
+Time: 08.00 - 17.00
+Venue: Aston Kartika Grogol Hotel, Jakarta
+Category: Participant
+Registration will be open at 08:00
+
+Your Personal QR Code
+Please find your personal QR Code below. Kindly save this email or take a screenshot of your QR Code and present it to our registration team upon arrival for a smooth and convenient check-in process.
+
+[ATTENDEE QR CODE]
+
+We look forward to welcoming you to BSSN CORE 3.
+
+If you have any further questions, please contact us at:
+Selvie: +62 898-7660-733
+
+Best regards,
+BSSN CORE 3 – 2026
+Organized by Yorindo Communication
+Event Organizer | Marketing Agency
+www.yorindocommunication.com`,
   },
   {
-    id: "friendly",
-    name: "Ramah & Antusias",
-    badge: "Komunitas / Workshop",
-    description: "Bahasa hangat dan santai untuk gathering, workshop, atau acara kreatif.",
-    subject: "Tiket Kamu Sudah Siap! Sampai Jumpa di {{event}}",
-    body: `Hai {{name}}!
+    id: "formal_general",
+    name: "Formal Corporate (Dinamis)",
+    badge: "Semua Event",
+    description: "Format surat konfirmasi formal berbahasa Inggris yang otomatis mengikuti nama & lokasi event.",
+    subject: "Registration Confirmation: {{event}} - [Participant Name]",
+    body: `Dear Mr./Ms. [Participant Name],
 
-Kabar gembira! Pendaftaran kamu untuk mengikuti {{event}} sudah resmi dikonfirmasi oleh tim panitia.
+Greetings from {{event}}.
 
-Di bawah ini adalah QR Code E-Tiket resmi kamu. Jangan lupa disimpan di HP ya, nanti tinggal scan cepat waktu check-in di pintu masuk acara (sekaligus otomatis masuk daftar undian Doorprize!).
+Thank you for registering. We are pleased to confirm that your registration for {{event}} has been successfully confirmed.
 
-Sampai ketemu di hari-H!`,
+Please find your event details below:
+Event: {{event}}
+Date: {{date}}
+Venue: {{location}}
+Category: Participant
+
+Your Personal QR Code
+Please find your personal QR Code below. Kindly save this email or take a screenshot of your QR Code and present it to our registration team upon arrival for a smooth and convenient check-in process.
+
+[ATTENDEE QR CODE]
+
+We look forward to welcoming you to {{event}}.
+
+Best regards,
+Organized by Yorindo Communication
+Event Organizer | Marketing Agency
+www.yorindocommunication.com`,
   },
   {
-    id: "vip",
-    name: "Undangan Eksklusif / VIP",
-    badge: "Tamu Kehormatan",
-    description: "Bahasa sopan dan eksklusif untuk tamu undangan khusus atau VIP.",
-    subject: "[VIP ACCESS] E-Tiket Kehormatan {{event}} - {{name}}",
-    body: `Yth. Bapak/Ibu {{name}},
+    id: "formal_id",
+    name: "Resmi Bahasa Indonesia",
+    badge: "Formal ID",
+    description: "Format surat konfirmasi resmi dalam Bahasa Indonesia yang bersih tanpa elemen berlebihan.",
+    subject: "Konfirmasi Registrasi & QR Code: {{event}} - [Participant Name]",
+    body: `Yth. Bapak/Ibu [Participant Name],
 
-Merupakan suatu kehormatan bagi kami untuk menyambut kehadiran Anda dalam acara {{event}}. Status registrasi Anda telah terverifikasi sebagai tamu undangan resmi.
+Terima kasih telah melakukan pendaftaran pada acara {{event}}. Kami mengonfirmasi bahwa registrasi Anda telah berhasil diverifikasi dan disetujui.
 
-Silakan gunakan QR Code E-Tiket terlampir untuk akses cepat pada meja penerimaan tamu saat hari pelaksanaan acara.
+Berikut adalah rincian pelaksanaan acara:
+Acara  : {{event}}
+Waktu  : {{date}}
+Lokasi : {{location}}
+Kategori: Peserta
+
+QR Code Personal Anda
+Silakan simpan email ini atau tangkap layar (screenshot) QR Code di bawah ini dan tunjukkan kepada tim registrasi kami saat tiba di lokasi acara untuk proses check-in.
+
+[ATTENDEE QR CODE]
+
+Kami menantikan kehadiran Anda.
 
 Hormat kami,
-Panitia Penyelenggara {{event}}`,
-  },
-  {
-    id: "reminder",
-    name: "Pengingat Hari-H (Reminder)",
-    badge: "H-1 / Hari Acara",
-    description: "Untuk dikirim ulang menjelang acara agar peserta siap menunjukkan QR Code.",
-    subject: "[Pengingat Acara] E-Tiket & QR Code Check-In {{event}} - {{name}}",
-    body: `Halo {{name}},
-
-Sekadar mengingatkan bahwa acara {{event}} akan segera berlangsung pada {{date}} di {{location}}. Kami mengirimkan kembali E-Tiket dan QR Code Anda agar mudah diakses saat tiba di lokasi.
-
-Mohon hadir 15-30 menit sebelum acara dimulai dan siapkan QR Code di bawah ini pada layar smartphone Anda untuk proses scan check-in yang cepat.`,
+Organized by Yorindo Communication
+Event Organizer | Marketing Agency
+www.yorindocommunication.com`,
   },
 ];
 
@@ -76,8 +115,8 @@ export function resolveEmailTemplateVars(
 ): string {
   return templateText
     .replace(/\{\{\s*name\s*\}\}/gi, vars.name)
+    .replace(/\[\s*Participant Name\s*\]/gi, vars.name)
     .replace(/\{\{\s*event\s*\}\}/gi, vars.event)
-    .replace(/\{\{\s*location\s*\}\}/gi, vars.location || "Lokasi sesuai undangan")
-    .replace(/\{\{\s*date\s*\}\}/gi, vars.date || "Sesuai jadwal acara");
+    .replace(/\{\{\s*location\s*\}\}/gi, vars.location || "Aston Kartika Grogol Hotel, Jakarta")
+    .replace(/\{\{\s*date\s*\}\}/gi, vars.date || "Thursday, 12 November 2026");
 }
-
