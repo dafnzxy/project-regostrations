@@ -84,17 +84,21 @@ export async function sendRsvpEmail({
   const ticketUrl = `${appUrl}/ticket/${qrToken}`;
 
   const qrBlockHtml = `
-    <div style="margin: 24px 0; padding: 24px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; text-align: center;">
-      <img src="cid:qrcode_ticket" alt="Personal QR Code" style="width: 200px; height: 200px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #ffffff; display: block; margin: 0 auto;" />
-      <div style="font-family: monospace; font-size: 12px; color: #475569; margin-top: 10px; letter-spacing: 0.5px;">
-        ID: ${escapeHtml(qrToken)}
-      </div>
-      <div style="margin-top: 14px;">
-        <a href="${ticketUrl}" style="background-color: #17449A; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">
-          Open / Download Digital QR Pass
-        </a>
-      </div>
-    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin: 24px 0;">
+      <tr>
+        <td align="center" style="padding: 24px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; text-align: center;">
+          <img src="cid:qrcode_ticket" alt="Personal QR Code" width="200" height="200" style="width: 200px; height: 200px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; background: #ffffff; display: block; margin: 0 auto;" />
+          <div style="font-family: Consolas, Monaco, monospace; font-size: 12px; color: #475569; margin-top: 10px;">
+            Registration ID: ${escapeHtml(qrToken)}
+          </div>
+          <div style="margin-top: 14px;">
+            <a href="${ticketUrl}" target="_blank" rel="noopener noreferrer" style="background-color: #17449A; color: #ffffff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; font-size: 13px; display: inline-block;">
+              View Digital QR Pass Online
+            </a>
+          </div>
+        </td>
+      </tr>
+    </table>
   `;
 
   let mainContentHtml = "";
@@ -115,6 +119,12 @@ export async function sendRsvpEmail({
       ${qrBlockHtml}
     `;
   }
+
+  // Plain-text version (Critical for passing corporate & Gmail anti-spam filters)
+  const plainTextContent = resolvedBodyText.replace(
+    qrPlaceholderRegex,
+    `[Personal QR Code Attached]\nRegistration ID: ${qrToken}\nView Digital QR Pass: ${ticketUrl}`
+  );
 
   // Create an EmailLog entry with status QUEUED
   const log = await prisma.emailLog.create({
@@ -144,10 +154,6 @@ export async function sendRsvpEmail({
     process.env.SMTP_PASS ||
     ""
   ).replace(/\s+/g, "");
-  const smtpFrom =
-    dbSettings?.smtpFrom ||
-    process.env.SMTP_FROM ||
-    `"BSSN CORE 3 - Yorindo Communication" <${smtpUser || "rsvp@yorindoregistration.id"}>`;
 
   try {
     // Generate QR code data URL
@@ -168,21 +174,50 @@ export async function sendRsvpEmail({
         },
       });
 
-      const htmlContent = `
-        <div style="font-family: Arial, 'Segoe UI', Helvetica, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #e2e8f0; border-top: 4px solid #17449A; border-radius: 8px; padding: 32px 28px; color: #1e293b;">
-          ${mainContentHtml}
-        </div>
-      `;
+      const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin: 0; padding: 20px 12px; background-color: #f8fafc; font-family: Arial, 'Segoe UI', Helvetica, sans-serif; color: #1e293b;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="max-width: 600px; width: 100%; background-color: #ffffff; border: 1px solid #e2e8f0; border-top: 4px solid #17449A; border-radius: 8px; padding: 32px 28px; text-align: left;">
+          <tr>
+            <td>
+              ${mainContentHtml}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
 
+      // Strictly align From address with authenticated smtpUser so SPF, DKIM, and DMARC pass 100%
       await transporter.sendMail({
-        from: smtpFrom,
-        to: recipientEmail,
+        from: {
+          name: "BSSN CORE 3 - Yorindo Communication",
+          address: smtpUser,
+        },
+        replyTo: smtpUser,
+        to: {
+          name: recipientName,
+          address: recipientEmail,
+        },
         subject,
+        text: plainTextContent,
         html: htmlContent,
         attachments: [
           {
-            filename: `QR-Code-${qrToken.slice(0, 8)}.png`,
+            filename: `QR-Pass-${qrToken.slice(0, 8)}.png`,
             content: qrBuffer,
+            contentType: "image/png",
+            contentDisposition: "inline",
             cid: "qrcode_ticket",
           },
         ],
