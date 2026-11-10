@@ -118,7 +118,7 @@ export function RegistrationsClient({
     useState<RegistrationWithLogs | null>(null);
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [sendingModalEmail, setSendingModalEmail] = useState(false);
-  const [origin, setOrigin] = useState("http://localhost:3000");
+  const [origin, setOrigin] = useState("https://yorindoregistration.id");
 
   useEffect(() => {
     setOrigin(window.location.origin);

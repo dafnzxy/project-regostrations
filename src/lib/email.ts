@@ -73,7 +73,7 @@ export async function sendRsvpEmail({
     )
     .join("");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://yorindoregistration.id";
   const ticketUrl = `${appUrl}/ticket/${qrToken}`;
 
   // Create an EmailLog entry with status QUEUED
