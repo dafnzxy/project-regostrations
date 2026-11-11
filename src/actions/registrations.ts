@@ -394,24 +394,87 @@ export async function sendWhatsAppTicket(
   return res;
 }
 
-export async function validateAndCheckIn(eventId: string, qrToken: string) {
+export function cleanScannedToken(input: string): string {
+  if (!input) return "";
+  let clean = input.trim();
+
+  // Strip wrapping quotes
+  if (
+    (clean.startsWith('"') && clean.endsWith('"')) ||
+    (clean.startsWith("'") && clean.endsWith("'"))
+  ) {
+    clean = clean.slice(1, -1).trim();
+  }
+
+  // Extract token from full ticket URLs like https://yorindoregistration.id/ticket/UUID
+  if (clean.includes("/ticket/")) {
+    const afterTicket = clean.split("/ticket/")[1] || "";
+    clean = afterTicket.split("?")[0].split("#")[0].replace(/\/+$/, "").trim();
+  }
+
+  // Extract from query string if present
+  if (clean.includes("?")) {
+    try {
+      const url = new URL(clean.startsWith("http") ? clean : `https://dummy.local/${clean}`);
+      const qToken =
+        url.searchParams.get("token") ||
+        url.searchParams.get("t") ||
+        url.searchParams.get("qr");
+      if (qToken) {
+        clean = qToken.trim();
+      }
+    } catch {
+      // keep clean as is
+    }
+  }
+
+  // Strip trailing slashes or hash
+  clean = clean.replace(/\/+$/, "").trim();
+
+  return clean;
+}
+
+export async function validateAndCheckIn(eventId: string, rawQrInput: string) {
   await requireAdminAuth();
 
-  const trimmedToken = qrToken.trim();
-  const reg = await prisma.registration.findFirst({
+  const originalInput = (rawQrInput || "").trim();
+  if (!originalInput) {
+    return {
+      success: false,
+      code: "UNRECOGNIZED_QR",
+      scannedText: "",
+      message: "Tidak ada data QR Code yang terbaca.",
+    };
+  }
+
+  const cleanedToken = cleanScannedToken(originalInput);
+
+  // 1. Search in current event by qrToken, id, email, or phone
+  let reg = await prisma.registration.findFirst({
     where: {
       eventId,
-      qrToken: trimmedToken,
+      OR: [
+        { qrToken: cleanedToken },
+        { qrToken: originalInput },
+        { id: cleanedToken },
+        { email: { equals: cleanedToken, mode: "insensitive" } },
+      ],
     },
     include: {
       event: true,
     },
   });
 
+  // 2. If not found in current event, check if it belongs to another event
   if (!reg) {
-    // Check if token belongs to another event
     const otherEvent = await prisma.registration.findFirst({
-      where: { qrToken: trimmedToken },
+      where: {
+        OR: [
+          { qrToken: cleanedToken },
+          { qrToken: originalInput },
+          { id: cleanedToken },
+        ],
+      },
       include: { event: true },
     });
 
@@ -419,14 +482,19 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
       return {
         success: false,
         code: "WRONG_EVENT",
-        message: `Tiket ini milik event lain: "${otherEvent.event.title}"`,
+        scannedText: originalInput,
+        otherEventTitle: otherEvent.event.title,
+        message: `Tiket terdeteksi milik event lain: "${otherEvent.event.title}" (Peserta: ${otherEvent.name})`,
+        registration: otherEvent,
       };
     }
 
+    // Completely unrecognized QR
     return {
       success: false,
-      code: "INVALID_TOKEN",
-      message: "QR Code tidak valid atau tidak terdaftar dalam sistem.",
+      code: "UNRECOGNIZED_QR",
+      scannedText: originalInput,
+      message: `QR Code tidak dikenali oleh sistem (Bukan tiket resmi atau format tidak terdaftar di database).`,
     };
   }
 
@@ -434,6 +502,7 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
     return {
       success: false,
       code: "ALREADY_CHECKED_IN",
+      scannedText: originalInput,
       message: `Peserta telah melakukan check-in pada ${new Intl.DateTimeFormat("id-ID", {
         timeStyle: "medium",
         dateStyle: "short",
@@ -446,6 +515,7 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
     return {
       success: false,
       code: "REJECTED",
+      scannedText: originalInput,
       message: "Pendaftaran peserta ini berstatus DITOLAK.",
       registration: reg,
     };
@@ -455,6 +525,7 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
     return {
       success: false,
       code: "PENDING",
+      scannedText: originalInput,
       message: "Pendaftaran peserta ini masih PENDING (belum disetujui oleh admin).",
       registration: reg,
     };
@@ -477,6 +548,7 @@ export async function validateAndCheckIn(eventId: string, qrToken: string) {
   return {
     success: true,
     code: "SUCCESS",
+    scannedText: originalInput,
     message: "Check-in BERHASIL! Selamat datang di acara.",
     registration: updated,
   };

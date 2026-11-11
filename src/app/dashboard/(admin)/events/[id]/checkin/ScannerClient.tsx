@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { validateAndCheckIn, manualCheckInById } from "@/actions/registrations";
 import {
   Camera,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Clock,
   Volume2,
   VolumeX,
@@ -18,6 +19,10 @@ import {
   X,
   Check,
   Sparkles,
+  Copy,
+  ScanLine,
+  UploadCloud,
+  RotateCcw,
 } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { useRouter } from "next/navigation";
@@ -39,6 +44,11 @@ interface ScannerClientProps {
   totalApproved: number;
   totalCheckedIn: number;
   initialAttendees: AttendeeItem[];
+}
+
+interface CameraDevice {
+  id: string;
+  label: string;
 }
 
 function extractCompany(answersJsonOrObj?: any): string {
@@ -87,31 +97,52 @@ export function ScannerClient({
   const [printOrientation, setPrintOrientation] = useState<"landscape" | "portrait">("landscape");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
 
+  // Cameras and hardware
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCameraStarting, setIsCameraStarting] = useState(false);
+
+  // Barcode gun / manual input
+  const [barcodeGunInput, setBarcodeGunInput] = useState("");
+
   const [scanResult, setScanResult] = useState<{
     success: boolean;
     code: string;
     message: string;
+    scannedText?: string;
+    otherEventTitle?: string;
     registration?: any;
   } | null>(null);
 
+  // Enhanced Toast system: supports success, error, warning
   const [activeToast, setActiveToast] = useState<{
-    name: string;
-    company: string;
-    time: string;
-    printed: boolean;
+    type: "success" | "error" | "warning";
+    title: string;
+    name?: string;
+    company?: string;
+    time?: string;
+    detail?: string;
+    printed?: boolean;
   } | null>(null);
 
   const [attendees, setAttendees] = useState<AttendeeItem[]>(initialAttendees);
   const [searchManual, setSearchManual] = useState("");
   const [manualLoadingId, setManualLoadingId] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const isProcessingRef = useRef(false);
+  const lastScannedRef = useRef<{ text: string; time: number }>({ text: "", time: 0 });
+
   useEffect(() => {
     setAttendees(initialAttendees);
   }, [initialAttendees]);
 
-  // Load preferences from localStorage
+  // Load preferences from localStorage & Enumerate Cameras
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const savedAutoPrint = localStorage.getItem("scanner_auto_print");
     if (savedAutoPrint !== null) {
       setAutoPrint(savedAutoPrint === "true");
@@ -120,6 +151,22 @@ export function ScannerClient({
     if (savedOrientation === "portrait" || savedOrientation === "landscape") {
       setPrintOrientation(savedOrientation);
     }
+
+    // Enumerate cameras
+    Html5Qrcode.getCameras()
+      .then((devices) => {
+        if (devices && devices.length > 0) {
+          setCameras(devices);
+          // Prefer rear/environment camera if available
+          const backCam = devices.find((d) =>
+            /back|rear|environment|belakang/i.test(d.label)
+          );
+          setSelectedCameraId(backCam ? backCam.id : devices[0].id);
+        }
+      })
+      .catch((err) => {
+        console.warn("Could not list cameras upfront:", err);
+      });
   }, []);
 
   const handleToggleAutoPrint = (val: boolean) => {
@@ -136,15 +183,13 @@ export function ScannerClient({
     }
   };
 
-  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
-  const isProcessingRef = useRef(false);
-
   const formatTimeWib = (dateInput: Date | string | null | undefined) => {
     if (!dateInput) return "OK";
     try {
       return new Intl.DateTimeFormat("id-ID", {
         hour: "2-digit",
         minute: "2-digit",
+        second: "2-digit",
         timeZone: "Asia/Jakarta",
       }).format(new Date(dateInput));
     } catch {
@@ -153,8 +198,8 @@ export function ScannerClient({
   };
 
   // High quality chime notification using Web Audio API + vibration
-  const playSound = (type: "success" | "error") => {
-    if (!soundEnabled) return;
+  const playSound = (type: "success" | "error" | "warning") => {
+    if (!soundEnabled || typeof window === "undefined") return;
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const now = audioCtx.currentTime;
@@ -187,25 +232,43 @@ export function ScannerClient({
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([100, 50, 150]);
         }
-      } else {
-        // Low double buzz
+      } else if (type === "warning") {
+        // Attention chime: 2 medium pings
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(220, now);
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.setValueAtTime(440, now + 0.18); // A4
         gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
         osc.connect(gain);
         gain.connect(audioCtx.destination);
         osc.start(now);
-        osc.stop(now + 0.3);
+        osc.stop(now + 0.45);
+
+        if (typeof navigator !== "undefined" && navigator.vibrate) {
+          navigator.vibrate([150, 80, 150]);
+        }
+      } else {
+        // Low error buzz: 220Hz saw wave
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.setValueAtTime(150, now + 0.15);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
 
         if (typeof navigator !== "undefined" && navigator.vibrate) {
           navigator.vibrate([250]);
         }
       }
     } catch {
-      // AudioContext not allowed or unsupported
+      // AudioContext unsupported
     }
   };
 
@@ -335,17 +398,26 @@ export function ScannerClient({
     }, 250);
   };
 
-  const handleScanSuccess = async (decodedText: string) => {
+  // Main scan processor: Handles valid, invalid, unrecognized QR codes with clear detection
+  const handleScanSuccess = useCallback(async (decodedText: string) => {
+    const rawText = (decodedText || "").trim();
+    if (!rawText) return;
+
+    const now = Date.now();
+    // Prevent debounce spam if the exact same text is scanned within 3 seconds
+    if (
+      lastScannedRef.current.text === rawText &&
+      now - lastScannedRef.current.time < 3000
+    ) {
+      return;
+    }
+
     if (isProcessingRef.current) return;
     isProcessingRef.current = true;
+    lastScannedRef.current = { text: rawText, time: now };
 
     try {
-      let token = decodedText.trim();
-      if (token.includes("/ticket/")) {
-        token = token.split("/ticket/")[1]?.split("?")[0] || token;
-      }
-
-      const res = await validateAndCheckIn(eventId, token);
+      const res = await validateAndCheckIn(eventId, rawText);
       setScanResult(res);
 
       if (res.success) {
@@ -354,6 +426,8 @@ export function ScannerClient({
 
         // Trigger Instant Notification Banner
         setActiveToast({
+          type: "success",
+          title: "Check-In Berhasil!",
           name: res.registration?.name || "Peserta",
           company: companyName,
           time: formatTimeWib(new Date()),
@@ -368,53 +442,145 @@ export function ScannerClient({
         // Update local attendees list
         setAttendees((prev) =>
           prev.map((a) =>
-            a.qrToken === token
+            a.id === res.registration?.id || a.qrToken === res.registration?.qrToken
               ? { ...a, status: "CHECKED_IN", checkedInAt: new Date() }
               : a
           )
         );
         router.refresh();
-      } else {
+      } else if (res.code === "ALREADY_CHECKED_IN") {
+        playSound("warning");
+        const companyName = extractCompany(res.registration?.answers);
+        setActiveToast({
+          type: "warning",
+          title: "Sudah Check-In Sebelumnya!",
+          name: res.registration?.name,
+          company: companyName,
+          detail: res.message,
+        });
+      } else if (res.code === "WRONG_EVENT") {
         playSound("error");
+        setActiveToast({
+          type: "error",
+          title: "Tiket Acara Lain!",
+          detail: res.message,
+        });
+      } else {
+        // UNRECOGNIZED_QR or other errors
+        playSound("error");
+        setActiveToast({
+          type: "error",
+          title: "QR Tidak Dikenali!",
+          detail: rawText.length > 45 ? rawText.slice(0, 45) + "..." : rawText,
+        });
       }
     } catch (err: any) {
       playSound("error");
+      const errorMsg = err?.message || "Gagal memproses QR Code.";
       setScanResult({
         success: false,
-        code: "ERROR",
-        message: err?.message || "Gagal memproses QR Code.",
+        code: "UNRECOGNIZED_QR",
+        scannedText: rawText,
+        message: errorMsg,
+      });
+      setActiveToast({
+        type: "error",
+        title: "QR Tidak Dikenali!",
+        detail: errorMsg,
       });
     } finally {
       setTimeout(() => {
         isProcessingRef.current = false;
-      }, 2000);
+      }, 1500);
     }
-  };
+  }, [eventId, autoPrint, soundEnabled, router]);
 
-  const startScanner = async () => {
+  // Robust Camera Startup with graceful fallback and dynamic qrbox
+  const startScanner = async (overrideCameraId?: string) => {
+    setIsCameraStarting(true);
+    setCameraError(null);
+    const camIdToUse = overrideCameraId || selectedCameraId;
+
     try {
+      // 1. Clean up existing instance if any
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            await html5QrCodeRef.current.stop();
+          }
+          html5QrCodeRef.current.clear();
+        } catch {
+          // ignore cleanup
+        }
+      }
+
+      // Check if #reader element exists
+      const readerElem = document.getElementById("reader");
+      if (!readerElem) {
+        throw new Error("Elemen scanner (#reader) belum siap di layar.");
+      }
+
+      // Clear any leftover DOM inside reader
+      readerElem.innerHTML = "";
+
       const qrScanner = new Html5Qrcode("reader");
       html5QrCodeRef.current = qrScanner;
 
-      await qrScanner.start(
-        { facingMode: "environment" },
-        {
-          fps: 15,
-          qrbox: { width: 250, height: 250 },
+      // Safe responsive qrbox calculation prevents crashes on low-res cameras
+      const config = {
+        fps: 10,
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const size = Math.max(160, Math.floor(minEdge * 0.72));
+          return { width: size, height: size };
         },
-        handleScanSuccess,
-        () => {}
-      );
+        aspectRatio: 1.0,
+      };
+
+      // Try starting with specified camera or fallback to environment/user
+      if (camIdToUse) {
+        await qrScanner.start(camIdToUse, config, handleScanSuccess, () => {});
+      } else {
+        try {
+          await qrScanner.start({ facingMode: "environment" }, config, handleScanSuccess, () => {});
+        } catch (envErr) {
+          console.warn("Back camera failed, falling back to front/default camera:", envErr);
+          await qrScanner.start({ facingMode: "user" }, config, handleScanSuccess, () => {});
+        }
+      }
+
       setIsScanning(true);
+
+      // Re-fetch cameras to get readable labels after permission granted
+      Html5Qrcode.getCameras()
+        .then((devices) => {
+          if (devices && devices.length > 0) {
+            setCameras(devices);
+            if (!selectedCameraId) {
+              setSelectedCameraId(devices[0].id);
+            }
+          }
+        })
+        .catch(() => {});
     } catch (err: any) {
-      alert("Tidak dapat mengakses kamera: " + err.message);
+      console.error("Camera start failed:", err);
+      setCameraError(
+        err?.message?.includes("NotAllowedError")
+          ? "Izin akses kamera ditolak. Harap izinkan kamera di browser Anda."
+          : err?.message || "Tidak dapat mengakses kamera."
+      );
+      setIsScanning(false);
+    } finally {
+      setIsCameraStarting(false);
     }
   };
 
   const stopScanner = async () => {
     if (html5QrCodeRef.current) {
       try {
-        await html5QrCodeRef.current.stop();
+        if (html5QrCodeRef.current.isScanning) {
+          await html5QrCodeRef.current.stop();
+        }
         html5QrCodeRef.current.clear();
       } catch (e) {
         console.error(e);
@@ -423,13 +589,57 @@ export function ScannerClient({
     }
   };
 
+  const handleCameraChange = async (newCamId: string) => {
+    setSelectedCameraId(newCamId);
+    if (isScanning) {
+      await stopScanner();
+      await startScanner(newCamId);
+    }
+  };
+
+  // Scan from uploaded image file
+  const handleScanImageFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const tempScanner = new Html5Qrcode("reader-hidden-file");
+      const decoded = await tempScanner.scanFile(file, true);
+      tempScanner.clear();
+      handleScanSuccess(decoded);
+    } catch (err: any) {
+      playSound("error");
+      setScanResult({
+        success: false,
+        code: "UNRECOGNIZED_QR",
+        scannedText: file.name,
+        message: "Tidak ditemukan QR Code yang valid pada gambar tersebut. Pastikan foto jelas dan tidak blur.",
+      });
+      setActiveToast({
+        type: "error",
+        title: "QR Tidak Terbaca",
+        detail: "Tidak ada QR Code yang terdeteksi pada gambar.",
+      });
+    } finally {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   useEffect(() => {
     return () => {
-      if (html5QrCodeRef.current && isScanning) {
-        html5QrCodeRef.current.stop().catch(() => {});
+      if (html5QrCodeRef.current) {
+        try {
+          if (html5QrCodeRef.current.isScanning) {
+            html5QrCodeRef.current.stop().catch(() => {});
+          }
+        } catch {
+          // ignore
+        }
       }
     };
-  }, [isScanning]);
+  }, []);
 
   const handleManualCheckInClick = async (attendee: AttendeeItem) => {
     setManualLoadingId(attendee.id);
@@ -447,6 +657,8 @@ export function ScannerClient({
       });
 
       setActiveToast({
+        type: "success",
+        title: "Check-In Berhasil!",
         name: updated.name,
         company: companyName,
         time: formatTimeWib(new Date()),
@@ -481,7 +693,8 @@ export function ScannerClient({
       a.name.toLowerCase().includes(q) ||
       a.email.toLowerCase().includes(q) ||
       comp.includes(q) ||
-      (a.phone && a.phone.includes(searchManual))
+      (a.phone && a.phone.includes(searchManual)) ||
+      (a.qrToken && a.qrToken.toLowerCase().includes(q))
     );
   });
 
@@ -496,18 +709,59 @@ export function ScannerClient({
 
   return (
     <div className="space-y-8 relative">
+      {/* Hidden container for file-based QR decoding */}
+      <div id="reader-hidden-file" className="hidden" />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleScanImageFile}
+        accept="image/*"
+        className="hidden"
+      />
+
       {/* =================================================================== */}
-      {/* FLOATING SUCCESS NOTIFICATION TOAST (Appears on every scan)        */}
+      {/* FLOATING NOTIFICATION TOAST (Appears on every scan)                */}
       {/* =================================================================== */}
       {activeToast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] p-4 rounded-2xl bg-slate-900/95 text-white shadow-2xl backdrop-blur-md border border-emerald-500/50 flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 shrink-0">
-            <CheckCircle2 className="w-6 h-6 animate-pulse" />
+        <div
+          className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 max-w-md w-[92%] p-4 rounded-2xl text-white shadow-2xl backdrop-blur-md flex items-center gap-3.5 animate-in fade-in slide-in-from-top-4 duration-300 border ${
+            activeToast.type === "success"
+              ? "bg-slate-900/95 border-emerald-500/50"
+              : activeToast.type === "warning"
+              ? "bg-amber-950/95 border-amber-500/50"
+              : "bg-rose-950/95 border-rose-500/60"
+          }`}
+        >
+          <div
+            className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border ${
+              activeToast.type === "success"
+                ? "bg-emerald-500/20 border-emerald-400/40 text-emerald-400"
+                : activeToast.type === "warning"
+                ? "bg-amber-500/20 border-amber-400/40 text-amber-400"
+                : "bg-rose-500/20 border-rose-400/40 text-rose-400"
+            }`}
+          >
+            {activeToast.type === "success" ? (
+              <CheckCircle2 className="w-6 h-6 animate-pulse" />
+            ) : activeToast.type === "warning" ? (
+              <Clock className="w-6 h-6" />
+            ) : (
+              <AlertCircle className="w-6 h-6 animate-pulse" />
+            )}
           </div>
+
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-400">
-                Check-In Berhasil! ({activeToast.time} WIB)
+              <span
+                className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                  activeToast.type === "success"
+                    ? "text-emerald-400"
+                    : activeToast.type === "warning"
+                    ? "text-amber-400"
+                    : "text-rose-400"
+                }`}
+              >
+                {activeToast.title} {activeToast.time ? `(${activeToast.time} WIB)` : ""}
               </span>
               {activeToast.printed && (
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-300 flex items-center gap-1">
@@ -516,15 +770,26 @@ export function ScannerClient({
                 </span>
               )}
             </div>
-            <div className="font-extrabold text-sm text-white truncate mt-0.5">
-              {activeToast.name}
-            </div>
+
+            {activeToast.name && (
+              <div className="font-extrabold text-sm text-white truncate mt-0.5">
+                {activeToast.name}
+              </div>
+            )}
+
             {activeToast.company && (
               <div className="text-xs text-slate-300 truncate">
                 {activeToast.company}
               </div>
             )}
+
+            {activeToast.detail && (
+              <div className="text-xs text-slate-300 line-clamp-2 mt-0.5">
+                {activeToast.detail}
+              </div>
+            )}
           </div>
+
           <button
             type="button"
             onClick={() => setActiveToast(null)}
@@ -559,6 +824,41 @@ export function ScannerClient({
               style={{ width: `${attendancePercent}%` }}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Fast Input Barcode Gun / Manual Scanner */}
+      <div className="p-4 rounded-2xl liquid-glass border border-slate-200/80 flex flex-col sm:flex-row items-center gap-3">
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-700 shrink-0">
+          <ScanLine className="w-4 h-4 text-[#17449A]" />
+          <span>Scanner Gun USB / Input Token:</span>
+        </div>
+        <div className="flex-1 w-full flex items-center gap-2">
+          <input
+            type="text"
+            placeholder="Arahkan Barcode Scanner Gun ke sini atau ketik token / email..."
+            value={barcodeGunInput}
+            onChange={(e) => setBarcodeGunInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && barcodeGunInput.trim()) {
+                handleScanSuccess(barcodeGunInput.trim());
+                setBarcodeGunInput("");
+              }
+            }}
+            className="flex-1 px-3.5 py-2 rounded-xl text-xs liquid-input text-slate-900 placeholder-slate-400"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              if (barcodeGunInput.trim()) {
+                handleScanSuccess(barcodeGunInput.trim());
+                setBarcodeGunInput("");
+              }
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shrink-0 cursor-pointer shadow-xs"
+          >
+            Verifikasi
+          </button>
         </div>
       </div>
 
@@ -620,11 +920,12 @@ export function ScannerClient({
                 {!isScanning ? (
                   <button
                     type="button"
-                    onClick={startScanner}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                    onClick={() => startScanner()}
+                    disabled={isCameraStarting}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/25 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <Camera className="w-3.5 h-3.5" />
-                    <span>Nyalakan Kamera</span>
+                    <span>{isCameraStarting ? "Menghubungkan..." : "Nyalakan Kamera"}</span>
                   </button>
                 ) : (
                   <button
@@ -638,6 +939,41 @@ export function ScannerClient({
               </div>
             </div>
 
+            {/* Camera Selector Dropdown (Shown if multiple cameras detected) */}
+            {cameras.length > 1 && (
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] font-bold text-slate-600 shrink-0">Pilih Kamera:</span>
+                <select
+                  value={selectedCameraId}
+                  onChange={(e) => handleCameraChange(e.target.value)}
+                  className="w-full text-xs font-medium text-slate-800 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#17449A]"
+                >
+                  {cameras.map((cam, idx) => (
+                    <option key={cam.id} value={cam.id}>
+                      {cam.label || `Kamera ${idx + 1}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Camera Error Alert */}
+            {cameraError && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{cameraError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => startScanner()}
+                  className="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold text-[11px] shrink-0"
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            )}
+
             {/* Viewfinder Element */}
             <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-square flex flex-col items-center justify-center border border-slate-200">
               <div id="reader" className="w-full h-full" />
@@ -646,16 +982,42 @@ export function ScannerClient({
                   <div className="w-16 h-16 rounded-2xl bg-[#17449A]/10 border border-[#17449A]/20 flex items-center justify-center text-[#17449A] mb-3">
                     <Camera className="w-8 h-8" />
                   </div>
-                  <p className="text-xs text-slate-600 max-w-xs leading-relaxed">
+                  <p className="text-xs text-slate-600 max-w-xs leading-relaxed mb-4">
                     Klik tombol <strong className="text-slate-900">&ldquo;Nyalakan Kamera&rdquo;</strong> di atas untuk memindai tiket QR Code peserta dari kamera HP atau webcam laptop.
                   </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startScanner()}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-sm cursor-pointer"
+                    >
+                      Buka Kamera
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 liquid-card hover:bg-slate-100 flex items-center gap-1.5 cursor-pointer"
+                      title="Unggah screenshot / foto tiket QR"
+                    >
+                      <UploadCloud className="w-3.5 h-3.5 text-[#17449A]" />
+                      <span>Scan dari File Foto</span>
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
-            <p className="text-[11px] font-medium text-slate-500 text-center">
-              Arahkan QR Code peserta ke dalam kotak pemindai kamera. Sistem akan memverifikasi dan mengeluarkan suara notifikasi secara instan.
-            </p>
+            <div className="flex items-center justify-between text-[11px] font-medium text-slate-500">
+              <span>Arahkan QR Code peserta ke tengah kotak kamera.</span>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[#17449A] font-bold hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <UploadCloud className="w-3.5 h-3.5" />
+                <span>Upload Foto QR</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -665,6 +1027,9 @@ export function ScannerClient({
             {scanResult ? (
               <div className="animate-fade-in space-y-4">
                 {scanResult.success ? (
+                  /* ========================================================= */
+                  /* SUCCESS CHECK-IN CARD                                     */
+                  /* ========================================================= */
                   <div className="p-6 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-center space-y-3 relative overflow-hidden">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-emerald-200 flex items-center justify-center text-emerald-600 mx-auto shadow-xs">
                       <CheckCircle2 className="w-8 h-8 animate-bounce-short" />
@@ -710,6 +1075,9 @@ export function ScannerClient({
                     </div>
                   </div>
                 ) : scanResult.code === "ALREADY_CHECKED_IN" ? (
+                  /* ========================================================= */
+                  /* ALREADY CHECKED IN (DUPLICATE) CARD                       */
+                  /* ========================================================= */
                   <div className="p-6 rounded-2xl bg-amber-50/90 border border-amber-200 text-center space-y-3">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-amber-200 flex items-center justify-center text-amber-600 mx-auto shadow-xs">
                       <Clock className="w-8 h-8" />
@@ -743,24 +1111,106 @@ export function ScannerClient({
                       </button>
                     </div>
                   </div>
+                ) : scanResult.code === "WRONG_EVENT" ? (
+                  /* ========================================================= */
+                  /* WRONG EVENT CARD                                          */
+                  /* ========================================================= */
+                  <div className="p-6 rounded-2xl bg-amber-50/95 border-2 border-amber-300 text-center space-y-3.5">
+                    <div className="w-16 h-16 rounded-2xl bg-white border border-amber-200 flex items-center justify-center text-amber-600 mx-auto shadow-xs">
+                      <AlertTriangle className="w-9 h-9 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-600 text-white shadow-2xs">
+                        <span>⚠️ TIKET ACARA LAIN</span>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mt-2">
+                        Tiket Terdaftar di Acara Berbeda
+                      </h3>
+                      <p className="text-xs text-amber-900 font-semibold mt-1">
+                        {scanResult.message}
+                      </p>
+                    </div>
+
+                    {scanResult.registration?.name && (
+                      <div className="p-3 bg-white rounded-xl border border-amber-200 text-center">
+                        <div className="text-[11px] font-bold text-slate-500">Nama Pemilik Tiket:</div>
+                        <div className="text-base font-extrabold text-slate-900">{scanResult.registration.name}</div>
+                      </div>
+                    )}
+                  </div>
                 ) : (
-                  <div className="p-6 rounded-2xl bg-rose-50/90 border border-rose-200 text-center space-y-3">
+                  /* ========================================================= */
+                  /* UNRECOGNIZED QR CODE DETECTION CARD                       */
+                  /* ========================================================= */
+                  <div className="p-6 rounded-2xl bg-rose-50/95 border-2 border-rose-300 text-center space-y-3.5 shadow-sm">
                     <div className="w-16 h-16 rounded-2xl bg-white border border-rose-200 flex items-center justify-center text-rose-600 mx-auto shadow-xs">
-                      <AlertCircle className="w-8 h-8" />
+                      <AlertCircle className="w-9 h-9 text-rose-600 animate-pulse" />
                     </div>
-                    <div className="inline-block px-3 py-1 rounded-full text-xs font-extrabold bg-rose-600 text-white">
-                      TIKET TIDAK VALID
+
+                    <div>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-rose-600 text-white shadow-2xs">
+                        <span>⚠️ QR CODE TIDAK DIKENALI</span>
+                      </div>
+                      <h3 className="text-xl font-black text-slate-900 mt-2">
+                        Format QR Tidak Dikenal Sistem
+                      </h3>
+                      <p className="text-xs text-rose-800 font-medium mt-1 leading-relaxed">
+                        Kamera berhasil mendeteksi QR Code, namun datanya <strong>tidak terdaftar</strong> sebagai tiket resmi pada event ini.
+                      </p>
                     </div>
-                    <p className="text-xs text-rose-700 font-medium leading-relaxed">{scanResult.message}</p>
+
+                    {/* Raw Scanned Payload Preview */}
+                    <div className="p-3.5 rounded-xl bg-white border border-rose-200 text-left space-y-1.5 shadow-inner">
+                      <div className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                        <span>Data Terbaca dari Scanner:</span>
+                        <span className="font-mono text-[9px] text-rose-600 font-bold bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200">
+                          UNRECOGNIZED
+                        </span>
+                      </div>
+                      <div className="font-mono text-xs bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-slate-800 break-all select-all max-h-24 overflow-y-auto">
+                        {scanResult.scannedText || scanResult.message}
+                      </div>
+                    </div>
+
+                    {/* Actionable buttons */}
+                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const query = (scanResult.scannedText || "").trim();
+                          setSearchManual(query);
+                          document.getElementById("manual-checkin-section")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Search className="w-3.5 h-3.5" />
+                        <span>Cari di Tabel Manual</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (scanResult.scannedText) {
+                            navigator.clipboard?.writeText(scanResult.scannedText);
+                            alert("Data QR berhasil disalin!");
+                          }
+                        }}
+                        className="w-full sm:w-auto px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 liquid-card hover:bg-slate-100 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Salin Teks QR</span>
+                      </button>
+                    </div>
                   </div>
                 )}
 
                 <button
                   type="button"
                   onClick={() => setScanResult(null)}
-                  className="w-full py-2.5 rounded-xl liquid-pill text-xs font-bold text-slate-700 cursor-pointer"
+                  className="w-full py-2.5 rounded-xl liquid-pill text-xs font-bold text-slate-700 hover:text-slate-900 flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  Reset / Siap Scan Peserta Berikutnya
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset / Siap Scan Peserta Berikutnya</span>
                 </button>
               </div>
             ) : (
@@ -770,7 +1220,7 @@ export function ScannerClient({
                 </div>
                 <h3 className="text-base font-extrabold text-slate-900">Menunggu Pemindaian QR</h3>
                 <p className="text-xs text-slate-600 max-w-sm mx-auto leading-relaxed">
-                  Hasil verifikasi identitas, suara notifikasi, dan cetak label tiket thermal (37 x 75 mm) akan otomatis berjalan dalam &lt; 1 detik.
+                  Hasil verifikasi identitas, notifikasi suara, dan cetak label tiket thermal (37 x 75 mm) akan otomatis berjalan dalam &lt; 1 detik.
                 </p>
               </div>
             )}
@@ -779,7 +1229,7 @@ export function ScannerClient({
       </div>
 
       {/* Manual Search & Check-in Table */}
-      <div className="space-y-4 pt-6 border-t border-slate-200/80">
+      <div id="manual-checkin-section" className="space-y-4 pt-6 border-t border-slate-200/80">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-slate-900">Pencarian & Check-In Manual</h3>
