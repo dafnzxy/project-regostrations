@@ -34,6 +34,7 @@ export default async function CheckInPage({ params }: PageProps) {
           name: true,
           email: true,
           phone: true,
+          answers: true,
           status: true,
           qrToken: true,
           checkedInAt: true,
@@ -57,7 +58,7 @@ export default async function CheckInPage({ params }: PageProps) {
         <div>
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-indigo-600 mb-2 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-[#17449A] mb-2 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Kembali ke Dashboard</span>
@@ -75,7 +76,7 @@ export default async function CheckInPage({ params }: PageProps) {
             href={`/dashboard/events/${event.id}/registrations`}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill"
           >
-            <Users className="w-3.5 h-3.5 text-indigo-600" />
+            <Users className="w-3.5 h-3.5 text-[#17449A]" />
             <span>Data Peserta</span>
           </Link>
 
