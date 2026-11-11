@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { FormField } from "@/types";
 import { StatusBadge } from "@/components/StatusBadge";
 import { EventQrModal } from "@/components/EventQrModal";
+import { PrintStickerLabelsModal } from "@/components/PrintStickerLabelsModal";
 import {
   approveRegistration,
   bulkApproveRegistrations,
@@ -24,6 +25,7 @@ import {
   Filter,
   FileSpreadsheet,
   UserPlus,
+  Printer,
   CheckCircle2,
   XCircle,
   Mail,
@@ -92,6 +94,7 @@ export function RegistrationsClient({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loadingAction, setLoadingAction] = useState<string | null>(null);
   const [showEventQrModal, setShowEventQrModal] = useState(false);
+  const [showPrintLabelsModal, setShowPrintLabelsModal] = useState(false);
 
   useEffect(() => {
     setRegistrations(initialRegistrations);
@@ -447,20 +450,42 @@ export function RegistrationsClient({
 
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
           {selectedIds.length > 0 && (
-            <button
-              type="button"
-              onClick={handleBulkApprove}
-              disabled={loadingAction === "bulk_approve"}
-              className="col-span-2 sm:col-span-1 px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              {loadingAction === "bulk_approve" ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-              ) : (
-                <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-              )}
-              <span>ACC & Kirim ({selectedIds.length})</span>
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleBulkApprove}
+                disabled={loadingAction === "bulk_approve"}
+                className="col-span-2 sm:col-span-1 px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-600/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                {loadingAction === "bulk_approve" ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                ) : (
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                )}
+                <span>ACC & Kirim ({selectedIds.length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowPrintLabelsModal(true)}
+                className="px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-slate-800 liquid-pill flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Cetak stiker label untuk peserta yang dicentang"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#17449A] shrink-0" />
+                <span>Cetak Label ({selectedIds.length})</span>
+              </button>
+            </>
           )}
+
+          <button
+            type="button"
+            onClick={() => setShowPrintLabelsModal(true)}
+            className="px-3.5 py-2.5 sm:py-2 rounded-xl text-xs font-bold text-white bg-[#17449A] hover:bg-[#12367B] shadow-md shadow-[#17449A]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            title="Cetak Massal Label Stiker 103 (12 label per lembar: Nama & PT)"
+          >
+            <Printer className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Cetak Stiker (12/Lembar)</span>
+          </button>
 
           <button
             type="button"
@@ -663,6 +688,18 @@ export function RegistrationsClient({
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Link>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedIds([r.id]);
+                      setShowPrintLabelsModal(true);
+                    }}
+                    className="p-2 rounded-xl liquid-pill text-slate-800 hover:text-[#17449A] cursor-pointer"
+                    title="Cetak Stiker Label Peserta Ini (12/Lembar)"
+                  >
+                    <Printer className="w-4 h-4" />
+                  </button>
 
                   <button
                     type="button"
@@ -895,6 +932,19 @@ export function RegistrationsClient({
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
                           </Link>
+
+                          {/* Print Label for this Attendee */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedIds([r.id]);
+                              setShowPrintLabelsModal(true);
+                            }}
+                            title="Cetak Stiker Label Peserta Ini (12/Lembar)"
+                            className="p-1.5 rounded-xl liquid-pill text-slate-700 hover:text-[#17449A] cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
 
                           {/* Delete */}
                           <button
@@ -1313,6 +1363,16 @@ export function RegistrationsClient({
         onClose={() => setShowEventQrModal(false)}
         slug={eventSlug || ""}
         eventTitle={eventTitle}
+      />
+
+      {/* Bulk Sticker Label 103 Print Modal (12 labels per sheet) */}
+      <PrintStickerLabelsModal
+        isOpen={showPrintLabelsModal}
+        onClose={() => setShowPrintLabelsModal(false)}
+        eventTitle={eventTitle}
+        registrations={registrations}
+        selectedIds={selectedIds}
+        formSchema={formSchema}
       />
     </div>
   );
