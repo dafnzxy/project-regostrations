@@ -38,6 +38,7 @@ model Event {
   endsAt             DateTime?
   registrationDeadline DateTime?
   quota              Int            @default(100)
+  vipQuota           Int            @default(0)
   status             String         @default("OPEN") // DRAFT, OPEN, CLOSED, COMPLETED
   posterUrl          String?
   formSchema         String         @default("[]") // JSON string of custom fields
@@ -65,6 +66,7 @@ model Registration {
   approvedBy   String?
   approvedAt   DateTime?
   checkedInAt  DateTime?
+  isVip        Boolean     @default(false)
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
 

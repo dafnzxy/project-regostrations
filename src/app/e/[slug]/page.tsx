@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { getEventBySlug } from "@/actions/events";
+import { prisma } from "@/lib/prisma";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { RegistrationForm } from "@/components/RegistrationForm";
 import { ShareEventQrButton } from "@/components/ShareEventQrButton";
 import { FormField } from "@/types";
-import { Calendar, MapPin, Users, Clock, ShieldCheck, Ticket } from "lucide-react";
+import { Calendar, MapPin, Users, Clock, ShieldCheck, Ticket, Crown } from "lucide-react";
 import Image from "next/image";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,14 @@ export default async function PublicEventPage({ params }: PageProps) {
     notFound();
   }
 
+  // Get VIP registration count
+  const vipRegistrationCount = await prisma.registration.count({
+    where: {
+      eventId: event.id,
+      isVip: true,
+    },
+  });
+
   let parsedFormSchema: FormField[] = [];
   try {
     parsedFormSchema = JSON.parse(event.formSchema || "[]");
@@ -42,6 +51,7 @@ export default async function PublicEventPage({ params }: PageProps) {
 
   const registeredCount = event._count.registrations;
   const quotaRemaining = Math.max(0, event.quota - registeredCount);
+  const vipQuotaRemaining = Math.max(0, event.vipQuota - vipRegistrationCount);
   const isOpen = event.status === "OPEN";
 
   const formattedStartDate = new Intl.DateTimeFormat("id-ID", {
@@ -202,6 +212,7 @@ export default async function PublicEventPage({ params }: PageProps) {
                 slug={event.slug}
                 formSchema={parsedFormSchema}
                 quotaRemaining={quotaRemaining}
+                vipQuotaRemaining={vipQuotaRemaining}
                 isOpen={isOpen}
                 rsvpMode={event.rsvpMode}
               />

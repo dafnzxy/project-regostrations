@@ -24,6 +24,7 @@ export async function registerParticipant(
     phone?: string;
     answers?: Record<string, any>;
     honeypot?: string;
+    isVip?: boolean;
   }
 ) {
   // 1. Anti-spam honeypot
@@ -117,11 +118,42 @@ export async function registerParticipant(
     };
   }
 
-  if (event._count.registrations >= event.quota) {
-    return {
-      success: false,
-      message: "Mohon maaf, kuota peserta untuk event ini sudah penuh.",
-    };
+  // Check VIP quota if registering as VIP
+  const isVipRegistration = data.isVip === true;
+  if (isVipRegistration) {
+    if (event.vipQuota <= 0) {
+      return {
+        success: false,
+        message: "Event ini tidak memiliki kuota VIP.",
+      };
+    }
+    const vipCount = await prisma.registration.count({
+      where: {
+        eventId: event.id,
+        isVip: true,
+      },
+    });
+    if (vipCount >= event.vipQuota) {
+      return {
+        success: false,
+        message: "Mohon maaf, kuota VIP untuk event ini sudah penuh.",
+      };
+    }
+  } else {
+    // Check regular quota (total quota - VIP quota)
+    const regularQuota = event.quota - event.vipQuota;
+    const regularCount = await prisma.registration.count({
+      where: {
+        eventId: event.id,
+        isVip: false,
+      },
+    });
+    if (regularCount >= regularQuota) {
+      return {
+        success: false,
+        message: "Mohon maaf, kuota peserta biasa untuk event ini sudah penuh.",
+      };
+    }
   }
 
   // 4. Server-side validation of required custom fields from formSchema
@@ -177,6 +209,7 @@ export async function registerParticipant(
       phone: cleanPhone,
       answers: serializedAnswers,
       status: initialStatus,
+      isVip: isVipRegistration,
       approvedBy: isAutoSend ? "SYSTEM_AUTO_SEND" : null,
       approvedAt: isAutoSend ? new Date() : null,
     },
@@ -208,6 +241,7 @@ export async function registerParticipant(
     registrationId: registration.id,
     qrToken: initialStatus === "APPROVED" ? registration.qrToken : null,
     status: initialStatus,
+    isVip: isVipRegistration,
   };
 }
 
@@ -580,6 +614,7 @@ export async function addManualAttendee(
     phone?: string;
     answers?: Record<string, any>;
     status?: string;
+    isVip?: boolean;
   }
 ) {
   await requireAdminAuth();
@@ -592,6 +627,7 @@ export async function addManualAttendee(
       phone: data.phone?.trim() || null,
       answers: JSON.stringify(data.answers || {}),
       status: data.status || "APPROVED",
+      isVip: data.isVip || false,
       approvedBy: "Manual Admin Input",
       approvedAt: new Date(),
     },

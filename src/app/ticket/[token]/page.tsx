@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateQrDataUrl } from "@/lib/qr";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Calendar, MapPin, QrCode as QrIcon, Clock, XCircle } from "lucide-react";
+import { Calendar, MapPin, QrCode as QrIcon, Clock, XCircle, Crown } from "lucide-react";
 import Link from "next/link";
 import { TicketActions } from "./TicketActions";
 
@@ -42,6 +42,7 @@ export default async function TicketPage({ params }: PageProps) {
       answers: true,
       status: true,
       qrToken: true,
+      isVip: true,
       event: {
         select: {
           title: true,
@@ -116,6 +117,12 @@ export default async function TicketPage({ params }: PageProps) {
               <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 break-words">
                 {reg.name}
               </h2>
+              {reg.isVip && (
+                <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 border border-amber-200">
+                  <Crown className="w-3.5 h-3.5 text-amber-600" />
+                  <span className="text-xs font-bold text-amber-800">VIP</span>
+                </div>
+              )}
               <p className="text-xs sm:text-sm text-slate-600 mt-0.5 break-all">
                 {reg.email}
               </p>

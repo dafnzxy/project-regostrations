@@ -45,7 +45,7 @@ export default async function EventRegistrationsPage({ params }: PageProps) {
             Database Peserta: {event.title}
           </h1>
           <p className="text-xs text-slate-600 mt-0.5">
-            Total {registrations.length} peserta terdaftar • Kuota {event.quota} Kursi
+            Total {registrations.length} peserta terdaftar • Kuota {event.quota} Kursi {event.vipQuota > 0 && `• VIP: ${event.vipQuota} Kursi`}
           </p>
         </div>
 
@@ -86,6 +86,7 @@ export default async function EventRegistrationsPage({ params }: PageProps) {
         initialEmailBody={event.emailBody}
         formSchema={parsedSchema}
         initialRegistrations={registrations}
+        vipQuota={event.vipQuota}
       />
     </div>
   );

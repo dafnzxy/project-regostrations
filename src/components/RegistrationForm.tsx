@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { FormField } from "@/types";
 import { registerParticipant } from "@/actions/registrations";
-import { CheckCircle2, AlertCircle, Loader2, ArrowRight, Ticket, Mail, User, Phone } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, ArrowRight, Ticket, Mail, User, Phone, Crown } from "lucide-react";
 import Link from "next/link";
 
 interface RegistrationFormProps {
   slug: string;
   formSchema: FormField[];
   quotaRemaining: number;
+  vipQuotaRemaining: number;
   isOpen: boolean;
   rsvpMode: string;
 }
@@ -18,12 +19,14 @@ export function RegistrationForm({
   slug,
   formSchema,
   quotaRemaining,
+  vipQuotaRemaining,
   isOpen,
   rsvpMode,
 }: RegistrationFormProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [isVip, setIsVip] = useState(false);
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({});
   const [honeypot, setHoneypot] = useState(""); // Anti-bot honeypot
 
@@ -33,15 +36,16 @@ export function RegistrationForm({
     registrationId: string;
     qrToken: string;
     status: string;
+    isVip: boolean;
   } | null>(null);
 
-  if (!isOpen || quotaRemaining <= 0) {
+  if (!isOpen || (quotaRemaining <= 0 && vipQuotaRemaining <= 0)) {
     return (
       <div className="p-8 text-center liquid-card rounded-3xl border border-rose-200">
         <AlertCircle className="w-12 h-12 text-rose-500 mx-auto mb-3" />
         <h3 className="text-xl font-extrabold text-slate-900 mb-2">Pendaftaran Ditutup</h3>
         <p className="text-sm text-slate-600 max-w-md mx-auto">
-          {quotaRemaining <= 0
+          {quotaRemaining <= 0 && vipQuotaRemaining <= 0
             ? "Mohon maaf, kuota peserta untuk event ini telah terisi penuh."
             : "Pendaftaran saat ini sedang tidak menerima peserta baru."}
         </p>
@@ -88,6 +92,7 @@ export function RegistrationForm({
         phone,
         answers: answersToSend,
         honeypot,
+        isVip,
       });
 
       if (!result.success) {
@@ -97,6 +102,7 @@ export function RegistrationForm({
           registrationId: result.registrationId!,
           qrToken: result.qrToken!,
           status: result.status!,
+          isVip: result.isVip!,
         });
       }
     } catch (err: any) {
@@ -116,6 +122,13 @@ export function RegistrationForm({
         <p className="text-slate-600 text-sm max-w-md mx-auto mb-6">
           Terima kasih, <strong className="text-slate-900">{name}</strong>! Data registrasi Anda telah tersimpan ke sistem kami.
         </p>
+
+        {successData.isVip && (
+          <div className="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 inline-flex items-center gap-2">
+            <Crown className="w-5 h-5 text-amber-600" />
+            <span className="font-bold text-amber-800 text-sm">Registrasi VIP Terverifikasi</span>
+          </div>
+        )}
 
         {successData.status === "APPROVED" ? (
           <div className="bg-emerald-50/90 border border-emerald-200 rounded-2xl p-5 mb-6 text-left max-w-md mx-auto">
@@ -155,6 +168,7 @@ export function RegistrationForm({
             setName("");
             setEmail("");
             setPhone("");
+            setIsVip(false);
             setCustomAnswers({});
           }}
           className="text-xs font-bold text-[#17449A] hover:text-[#12367B] underline underline-offset-4 cursor-pointer"
@@ -186,6 +200,41 @@ export function RegistrationForm({
           suppressHydrationWarning
         />
       </div>
+
+      {/* VIP Selection */}
+      {vipQuotaRemaining > 0 && (
+        <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 space-y-3">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <Crown className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isVip}
+                  onChange={(e) => setIsVip(e.target.checked)}
+                  disabled={vipQuotaRemaining <= 0}
+                  className="accent-amber-600 w-4.5 h-4.5 rounded border-2 border-amber-300 checked:border-amber-600"
+                />
+                <div className="text-left">
+                  <span className="font-bold text-slate-900 block">
+                    Daftar sebagai VIP
+                  </span>
+                  <span className="text-xs text-slate-600 block mt-0.5">
+                    {vipQuotaRemaining > 0
+                      ? `Kuota VIP tersisa: ${vipQuotaRemaining} kursi`
+                      : "Kuota VIP penuh"}
+                  </span>
+                </div>
+              </label>
+              <p className="text-[11px] text-amber-700 mt-2 leading-relaxed">
+                Peserta VIP mendapat prioritas check-in, akses area khusus, dan benefit eksklusif lainnya.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Default Fields */}
       <div className="space-y-4">

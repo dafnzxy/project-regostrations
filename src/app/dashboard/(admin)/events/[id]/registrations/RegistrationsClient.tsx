@@ -41,6 +41,7 @@ import {
   Save,
   X,
   MessageCircle,
+  Crown,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -53,6 +54,7 @@ interface RegistrationWithLogs {
   answers: string;
   status: string;
   qrToken: string;
+  isVip: boolean;
   approvedBy: string | null;
   approvedAt: Date | null;
   checkedInAt: Date | null;
@@ -74,6 +76,7 @@ interface RegistrationsClientProps {
   initialEmailBody?: string | null;
   formSchema: FormField[];
   initialRegistrations: RegistrationWithLogs[];
+  vipQuota: number;
 }
 
 export function RegistrationsClient({
@@ -86,6 +89,7 @@ export function RegistrationsClient({
   initialEmailBody,
   formSchema,
   initialRegistrations,
+  vipQuota,
 }: RegistrationsClientProps) {
   const router = useRouter();
   const [registrations, setRegistrations] = useState(initialRegistrations);
@@ -105,6 +109,9 @@ export function RegistrationsClient({
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newCompany, setNewCompany] = useState("");
+  const [newJobTitle, setNewJobTitle] = useState("");
+  const [newIsVip, setNewIsVip] = useState(false);
 
   // Email Template & Send Ticket Modal state
   const defaultPreset = EMAIL_TEMPLATE_PRESETS[0];
@@ -356,15 +363,24 @@ export function RegistrationsClient({
   const handleAddManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const answers: Record<string, any> = {};
+      if (newCompany) answers.company = newCompany;
+      if (newJobTitle) answers.jobTitle = newJobTitle;
+
       await addManualAttendee(eventId, {
         name: newName,
         email: newEmail,
         phone: newPhone,
+        answers,
+        isVip: newIsVip,
       });
       setShowAddModal(false);
       setNewName("");
       setNewEmail("");
       setNewPhone("");
+      setNewCompany("");
+      setNewJobTitle("");
+      setNewIsVip(false);
       router.refresh();
     } catch (e: any) {
       alert("Gagal menambah peserta: " + e.message);
@@ -564,8 +580,14 @@ export function RegistrationsClient({
                       className="accent-[#17449A] w-4 h-4 rounded mt-0.5 cursor-pointer shrink-0"
                     />
                     <div className="min-w-0">
-                      <div className="font-extrabold text-sm text-slate-900 break-words">
+                      <div className="flex items-center gap-2 font-extrabold text-sm text-slate-900 break-words">
                         {r.name}
+                        {r.isVip && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold">
+                            <Crown className="w-3 h-3" />
+                            VIP
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-slate-600 break-all">
                         {r.email}
@@ -801,7 +823,15 @@ export function RegistrationsClient({
                       </td>
 
                       <td className="p-3 sticky left-10 z-10 bg-white/95 backdrop-blur-md border-r border-slate-200/80 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] transition-colors min-w-[170px]">
-                        <div className="font-bold text-slate-900 truncate max-w-[170px]">{r.name}</div>
+                        <div className="flex items-center gap-2 font-bold text-slate-900 truncate max-w-[170px]">
+                          {r.name}
+                          {r.isVip && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 border border-amber-200 text-amber-800 text-[10px] font-bold shrink-0">
+                              <Crown className="w-3 h-3" />
+                              VIP
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-600 truncate max-w-[170px]">
                           {r.email}
                         </div>
@@ -1336,6 +1366,49 @@ export function RegistrationsClient({
                   className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
                 />
               </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Nama Perusahaan / PT
+                </label>
+                <input
+                  type="text"
+                  value={newCompany}
+                  onChange={(e) => setNewCompany(e.target.value)}
+                  placeholder="Contoh: PT Maju Bersama"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Jabatan
+                </label>
+                <input
+                  type="text"
+                  value={newJobTitle}
+                  onChange={(e) => setNewJobTitle(e.target.value)}
+                  placeholder="Contoh: Manager Marketing"
+                  className="w-full px-3 py-2 rounded-xl liquid-input text-slate-900 text-xs"
+                />
+              </div>
+
+              {vipQuota > 0 && (
+                <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newIsVip}
+                      onChange={(e) => setNewIsVip(e.target.checked)}
+                      className="accent-amber-600 w-4 h-4 rounded border-2 border-amber-300 checked:border-amber-600"
+                    />
+                    <div className="text-left">
+                      <span className="font-bold text-slate-900 block text-xs">Peserta VIP</span>
+                      <span className="text-[10px] text-slate-600 block">Akses prioritas check-in & area khusus</span>
+                    </div>
+                  </label>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-3">
                 <button

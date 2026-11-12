@@ -34,6 +34,7 @@ export async function getEventBySlug(slug: string) {
       endsAt: true,
       registrationDeadline: true,
       quota: true,
+      vipQuota: true,
       status: true,
       posterUrl: true,
       formSchema: true,
@@ -75,6 +76,7 @@ export async function createEvent(data: {
   endsAt?: string;
   registrationDeadline?: string;
   quota: number;
+  vipQuota?: number;
   status: string;
   posterUrl?: string;
   rsvpMode: string;
@@ -111,6 +113,7 @@ export async function createEvent(data: {
       endsAt: data.endsAt ? new Date(data.endsAt) : null,
       registrationDeadline: data.registrationDeadline ? new Date(data.registrationDeadline) : null,
       quota: data.quota || 100,
+      vipQuota: data.vipQuota || 0,
       status: data.status || "OPEN",
       posterUrl: data.posterUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=1200&q=80",
       rsvpMode: data.rsvpMode || "MANUAL",
@@ -133,6 +136,7 @@ export async function updateEvent(
     startsAt?: string;
     endsAt?: string;
     quota?: number;
+    vipQuota?: number;
     status?: string;
     posterUrl?: string;
     rsvpMode?: string;
@@ -150,6 +154,7 @@ export async function updateEvent(
   if (data.startsAt !== undefined) updatePayload.startsAt = new Date(data.startsAt);
   if (data.endsAt !== undefined) updatePayload.endsAt = data.endsAt ? new Date(data.endsAt) : null;
   if (data.quota !== undefined) updatePayload.quota = Number(data.quota);
+  if (data.vipQuota !== undefined) updatePayload.vipQuota = Number(data.vipQuota);
   if (data.status !== undefined) updatePayload.status = data.status;
   if (data.posterUrl !== undefined) updatePayload.posterUrl = data.posterUrl;
   if (data.rsvpMode !== undefined) updatePayload.rsvpMode = data.rsvpMode;

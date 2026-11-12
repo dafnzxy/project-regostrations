@@ -204,7 +204,7 @@ export function PrintStickerLabelsModal({
     const pagesCount = Math.max(1, Math.ceil(((startOffset - 1) + attendeesToPrint.length) / 12));
     let pagesHtml = "";
 
-    const paperHeight = paperSize === "a4" ? "297mm" : "165mm";
+    const paperHeight = paperSize === "a4" ? "297mm" : "180mm";
 
     for (let page = 1; page <= pagesCount; page++) {
       let cellsHtml = "";
@@ -276,7 +276,7 @@ export function PrintStickerLabelsModal({
   <title>Cetak Label Stiker 103 - ${escapeHtml(eventTitle)}</title>
   <style>
     @page {
-      size: ${paperSize === "a4" ? "210mm 297mm" : "210mm 165mm"};
+      size: ${paperSize === "a4" ? "210mm 297mm" : "235mm 180mm"};
       margin: 0;
     }
     @media print {
@@ -316,16 +316,16 @@ export function PrintStickerLabelsModal({
     }
     .labels-grid {
       display: grid;
-      grid-template-columns: repeat(3, 64mm);
-      grid-template-rows: repeat(4, 32mm);
-      column-gap: 4mm;
-      row-gap: 6mm;
-      width: 200mm;
-      height: 146mm;
+      grid-template-columns: repeat(3, 75mm);
+      grid-template-rows: repeat(4, 37mm);
+      column-gap: 2mm;
+      row-gap: 3mm;
+      width: 229mm;
+      height: 157mm;
     }
     .label-cell {
-      width: 64mm;
-      height: 32mm;
+      width: 75mm;
+      height: 37mm;
       box-sizing: border-box;
       padding: 2.2mm 3.2mm;
       display: flex;
@@ -438,7 +438,7 @@ export function PrintStickerLabelsModal({
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Format 3 Kolom × 4 Baris (Ukuran Label: 64 × 32 mm) • {eventTitle}
+                Format 3 Kolom × 4 Baris (Ukuran Label: 75 × 37 mm) • {eventTitle}
               </p>
             </div>
           </div>
@@ -693,7 +693,7 @@ export function PrintStickerLabelsModal({
                 </div>
 
                 <div className="mt-3 pt-2.5 border-t border-slate-200 flex items-center justify-between text-[10px] font-medium text-slate-400">
-                  <span>Ukuran Label: 64 × 32 mm per kotak stiker</span>
+                  <span>Ukuran Label: 75 × 37 mm per kotak stiker (3 kolom × 4 baris)</span>
                   <span>Kertas Stiker Okey / T&J No. 103 (Isi 12 Label)</span>
                 </div>
               </div>
