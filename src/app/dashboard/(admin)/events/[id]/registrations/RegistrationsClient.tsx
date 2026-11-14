@@ -364,8 +364,45 @@ export function RegistrationsClient({
     e.preventDefault();
     try {
       const answers: Record<string, any> = {};
-      if (newCompany) answers.company = newCompany;
-      if (newJobTitle) answers.jobTitle = newJobTitle;
+      const companyVal = newCompany.trim();
+      const jobTitleVal = newJobTitle.trim();
+
+      if (companyVal) {
+        answers.nama_perusahaan = companyVal;
+        answers.perusahaan = companyVal;
+        answers.company = companyVal;
+        answers.pt = companyVal;
+        for (const f of formSchema) {
+          const l = (f.label || "").toLowerCase();
+          if (
+            l.includes("perusahaan") ||
+            l.includes("pt") ||
+            l.includes("instansi") ||
+            l.includes("institusi") ||
+            l.includes("company") ||
+            l.includes("kantor")
+          ) {
+            answers[f.id] = companyVal;
+          }
+        }
+      }
+
+      if (jobTitleVal) {
+        answers.jabatan = jobTitleVal;
+        answers.jobTitle = jobTitleVal;
+        answers.posisi = jobTitleVal;
+        for (const f of formSchema) {
+          const l = (f.label || "").toLowerCase();
+          if (
+            l.includes("jabatan") ||
+            l.includes("posisi") ||
+            l.includes("role") ||
+            l.includes("title")
+          ) {
+            answers[f.id] = jobTitleVal;
+          }
+        }
+      }
 
       await addManualAttendee(eventId, {
         name: newName,
