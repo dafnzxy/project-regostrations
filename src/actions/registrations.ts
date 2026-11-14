@@ -428,7 +428,7 @@ export async function sendWhatsAppTicket(
   return res;
 }
 
-export function cleanScannedToken(input: string): string {
+function cleanScannedToken(input: string): string {
   if (!input) return "";
   let clean = input.trim();
 
